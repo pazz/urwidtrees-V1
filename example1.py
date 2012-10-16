@@ -41,10 +41,23 @@ if __name__ == "__main__":
     S = SimpleTreeWalker(forrest)  # get a Walker
     treebox = TreeBox(S,
                       indent=3,
-                      arrow_hbar=u'\u2500',
-                      arrow_vbar=u'\u2502',
-                      arrow_tip=u'\u25b6',
-                      arrow_connector_t=u'\u251c',
-                      arrow_connector_l=u'\u2514'
+                      # double
+                      # arrow_hbar=u'\u2550',
+                      # arrow_vbar=u'\u2551',
+                      # arrow_tip=u'\u25b6',
+                      # arrow_connector_t=u'\u2560',
+                      # arrow_connector_l=u'\u255a',
+                      #thin
+                      # arrow_hbar=u'\u2500',
+                      # arrow_vbar=u'\u2502',
+                      arrow_tip=u'\u27a4',
+                      # arrow_connector_t=u'\u251c',
+                      # arrow_connector_l=u'\u2514', # u'\u2570' # round
+                      #thick
+                      # arrow_hbar=u'\u2501',
+                      # arrow_vbar=u'\u2503',
+                      # arrow_tip=u'\u25b6',
+                      # arrow_connector_t=u'\u2523',
+                      # arrow_connector_l=u'\u2517'
                       )  # stick it into a ListBox
     urwid.MainLoop(treebox, palette).run()  # go
