@@ -2,8 +2,8 @@
 
 import logging
 import urwid
-from trees import SimpleTreeWalker
-from widget import TreeBox
+from walkers import SimpleTreeWalker
+from widgets import TreeBox
 
 
 class FocusableText(urwid.WidgetWrap):

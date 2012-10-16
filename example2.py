@@ -2,8 +2,8 @@
 
 import urwid
 import os
-from trees import LazyTreeWalker
-from widget import TreeBox
+from walkers import LazyTreeWalker
+from widgets import TreeBox
 
 
 class FocusableText(urwid.WidgetWrap):
