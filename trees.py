@@ -91,11 +91,13 @@ class TreeWalker(object):
 
     def next_position(self, pos):
         """returns the next position in depth-first order"""
-        candidate = self.first_child_position(pos)
-        if candidate is None:
-            candidate = self.next_sibbling_position(pos)
+        candidate = None
+        if pos is not None:
+            candidate = self.first_child_position(pos)
             if candidate is None:
-                candidate = self._next_of_kin(pos)
+                candidate = self.next_sibbling_position(pos)
+                if candidate is None:
+                    candidate = self._next_of_kin(pos)
         return candidate
 
     def _last_decendant_position(self, pos):
@@ -112,13 +114,14 @@ class TreeWalker(object):
     def prev_position(self, pos):
         """returns the previous position in depth-first order"""
         candidate = None
-        prevsib = self.prev_sibbling_position(pos)  # is None if first
-        if prevsib is not None:
-            candidate = self._last_decendant_position(prevsib)
-        else:
-            parent = self.parent_position(pos)
-            if parent is not None:
-                candidate = parent
+        if pos is not None:
+            prevsib = self.prev_sibbling_position(pos)  # is None if first
+            if prevsib is not None:
+                candidate = self._last_decendant_position(prevsib)
+            else:
+                parent = self.parent_position(pos)
+                if parent is not None:
+                    candidate = parent
         return candidate
 
 # To be overwritten by subclasses
@@ -168,7 +171,7 @@ class SimpleTreeWalker(TreeWalker):
     positions are lists of ints determining a path from toplevel node.
     """
     def __init__(self, treelist):
-        self.focus = [0]
+        self.focus = (0,)
         self._treelist = treelist
         TreeWalker.__init__(self)
 
@@ -187,9 +190,10 @@ class SimpleTreeWalker(TreeWalker):
     def _get_node(self, treelist, path):
         """look up widget at `path` of `treelist`; default to None if nonexistent."""
         node = None
-        subtree = self._get_subtree(treelist, path)
-        if subtree is not None:
-            node = subtree[0]
+        if path is not None:
+            subtree = self._get_subtree(treelist, path)
+            if subtree is not None:
+                node = subtree[0]
         return node
 
     def __getitem__(self, pos):
@@ -197,8 +201,9 @@ class SimpleTreeWalker(TreeWalker):
 
     def parent_position(self, pos):
         parent = None
-        if len(pos) > 1:
-            parent = pos[:-1]
+        if pos is not None:
+            if len(pos) > 1:
+                parent = pos[:-1]
         return parent
 
     def _confirm_pos(self, pos):
@@ -208,18 +213,21 @@ class SimpleTreeWalker(TreeWalker):
         return candidate
 
     def first_child_position(self, pos):
-        return self._confirm_pos(pos + [0])
+        return self._confirm_pos(pos + (0,))
 
     def last_child_position(self, pos):
         candidate = None
         subtree = self._get_subtree(self._treelist, pos)
         children = subtree[1]
         if children is not None:
-            candidate = pos + [len(children) - 1]
+            candidate = pos + (len(children) - 1,)
         return candidate
 
     def next_sibbling_position(self, pos):
-        return self._confirm_pos(pos[:-1] + [pos[-1] + 1])
+        return self._confirm_pos(pos[:-1] + (pos[-1] + 1,))
 
     def prev_sibbling_position(self, pos):
-        return pos[:-1] + [pos[-1] - 1] if (pos[-1] > 0) else None
+        return pos[:-1] + (pos[-1] - 1,) if (pos[-1] > 0) else None
+
+
+
