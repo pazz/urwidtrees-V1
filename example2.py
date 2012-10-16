@@ -30,9 +30,12 @@ class DirectoryWalker(LazyTreeWalker):
 
     def _list_dir(self, path):
         """returns absolute paths for all entries in a directory"""
-        elements = [os.path.join(
-            path, x) for x in os.listdir(path) if os.path.isdir(path)]
-        elements.sort()
+        try:
+            elements = [os.path.join(
+                path, x) for x in os.listdir(path) if os.path.isdir(path)]
+            elements.sort()
+        except OSError:
+            elements = None
         return elements
 
     def _get_sibblings(self, pos):
