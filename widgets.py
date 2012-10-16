@@ -10,7 +10,7 @@ class ListWalkerAdapter(urwid.ListWalker):
     def __init__(self, walker, indent=2,
                  arrow_hbar=u'\u2500',
                  arrow_vbar=u'\u2502',
-                 arrow_tip=u'\u25b6',
+                 arrow_tip=u'\u27a4',
                  arrow_connector_t=u'\u251c',
                  arrow_connector_l=u'\u2514'):
         self._walker = walker
@@ -117,8 +117,6 @@ class ListWalkerAdapter(urwid.ListWalker):
 class TreeBox(urwid.WidgetWrap):
     """A widget representing something in a nested tree display."""
     _selectable = True
-    #unexpanded_icon = SelectableIcon('+', 0)
-    #expanded_icon = SelectableIcon('-', 0)
 
     def __init__(self, walker, **kwargs):
         self._walker = walker
@@ -128,3 +126,45 @@ class TreeBox(urwid.WidgetWrap):
 
     def get_focus(self):
         return self._outer_list.get_focus()
+
+    def focus_parent(self):
+        parent = self._walker.parent_position(self._walker.focus)
+        if parent is not None:
+            self._outer_list.set_focus(parent)
+
+    def focus_first_child(self):
+        child = self._walker.first_child_position(self._walker.focus)
+        if child is not None:
+            self._outer_list.set_focus(child)
+
+    def focus_next_sibbling(self):
+        sib = self._walker.next_sibbling_position(self._walker.focus)
+        if sib is not None:
+            self._outer_list.set_focus(sib)
+
+    def focus_prev_sibbling(self):
+        sib = self._walker.prev_sibbling_position(self._walker.focus)
+        if sib is not None:
+            self._outer_list.set_focus(sib)
+
+    def keypress(self, size, key):
+        """
+        TreeBox interprets `left/right` as well as page `up/down` to move the
+        focus to parent/first child and next/previous sibbling respectively.
+        All other keys are passed to the underlying ListBox.
+        """
+        if key in ['left', 'right', 'page up', 'page down']:
+            if key == 'left':
+                self.focus_parent()
+            elif key == 'right':
+                self.focus_first_child()
+            elif key == 'page up':
+                self.focus_prev_sibbling()
+            elif key == 'page down':
+                self.focus_next_sibbling()
+            # This is a hack around ListBox misbehaving:
+            # it seems impossible to set the focus without calling keypress as
+            # otherwise the change becomes visible only after the next render()
+            return self._outer_list.keypress(size, None)
+        else:
+            return self._outer_list.keypress(size, key)
