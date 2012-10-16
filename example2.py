@@ -92,6 +92,6 @@ palette = [
 if __name__ == "__main__":
     cwd = os.getcwd()  # get current working directory
     D = DirectoryWalker(cwd)  # get a Walker with cwd as initial focus
-    treebox = TreeBox(D, indent=1)  # stick it into a ListBox
+    treebox = TreeBox(D, indent=4)  # stick it into a TreeBox
     #treebox = urwid.ListBox(D)  # stick it into a ListBox
     urwid.MainLoop(treebox, palette).run()  # go

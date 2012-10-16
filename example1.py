@@ -25,28 +25,26 @@ palette = [
 ]
 
 # define a test tree
-tree = (FocusableText('root\n la'), [])
-for i in range(4):
+tree = (FocusableText('root'), [])
+for i in range(5):
     subtree = (FocusableText('parent %d' % i), [])
     for j in range(5):
         leaf = (FocusableText('child %d.%d' % (i, j)), None)
         subtree[1].append(leaf)
     tree[1].append(subtree)
-tree[1][2][1].append((FocusableText('new Childla'), None))
 
 # define a list of trees to be passed on to SimpleTreeWalker
 forrest = [tree]
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='example.log',level=logging.DEBUG)
+    logging.basicConfig(filename='example.log', level=logging.DEBUG)
     S = SimpleTreeWalker(forrest)  # get a Walker
     treebox = TreeBox(S,
-                      indent=0,
+                      indent=3,
                       arrow_hbar=u'\u2500',
                       arrow_vbar=u'\u2502',
                       arrow_tip=u'\u25b6',
                       arrow_connector_t=u'\u251c',
                       arrow_connector_l=u'\u2514'
-                     )  # stick it into a ListBox
-    #treebox = urwid.ListBox(S)  # stick it into a ListBox
+                      )  # stick it into a ListBox
     urwid.MainLoop(treebox, palette).run()  # go
