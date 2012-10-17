@@ -22,6 +22,8 @@ class FocusableText(urwid.WidgetWrap):
 palette = [
     ('body', 'black', 'light gray'),
     ('focus', 'light gray', 'dark blue', 'standout'),
+    ('bars', 'dark red', 'light gray', ''),
+    ('arrowtip', 'light red', 'light gray', ''),
 ]
 
 # define a test tree
@@ -48,13 +50,18 @@ if __name__ == "__main__":
                       # arrow_connector_t=u'\u2560',
                       # arrow_connector_l=u'\u255a',
                       #thin
-                      # arrow_hbar=u'\u2500',
-                      # arrow_vbar=u'\u2502',
-                      arrow_tip=u'\u27a4',
+                      arrow_hbar_char=u'\u2500',
+                      arrow_hbar_att='bars',
+                      arrow_vbar_char=u'\u2502',
+                      arrow_vbar_att='bars',
+                      arrow_tip_char=u'\u27a4',
+                      arrow_tip_att='arrowtip',
+                      void_att='bars',
                       # arrow_connector_t=u'\u251c',
                       # arrow_connector_l=u'\u2514', # u'\u2570' # round
                       #thick
-                      # arrow_hbar=u'\u2501',
+                      #arrow_hbar_char=u'\u2501',
+                      #arrow_hbar_att='highlight',
                       # arrow_vbar=u'\u2503',
                       # arrow_tip=u'\u25b6',
                       # arrow_connector_t=u'\u2523',
