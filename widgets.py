@@ -14,7 +14,7 @@ class ListWalkerAdapter(urwid.ListWalker):
                  arrow_vbar_att=None,
                  arrow_tip_char=u'\u27a4',
                  arrow_tip_att=None,
-                 void_att=None,
+                 arrow_att=None,
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
                  arrow_connector_att=None):
@@ -29,7 +29,7 @@ class ListWalkerAdapter(urwid.ListWalker):
         self._arrow_connector_att = arrow_connector_att
         self._arrow_tip_char = arrow_tip_char
         self._arrow_tip_att = arrow_tip_att
-        self._void_att = void_att
+        self._arrow_att = arrow_att
         self._cache = {}
 
     def get_focus(self):
@@ -57,7 +57,7 @@ class ListWalkerAdapter(urwid.ListWalker):
     def _construct_spacer(self, pos, acc):
         """
         build a spacer that occupies the horizontally indented
-        space between pos and the root node.
+        space between pos's parent and the root node.
         It will return a list of tuples to be fed into a Columns
         widget.
         """
@@ -66,17 +66,62 @@ class ListWalkerAdapter(urwid.ListWalker):
             grandparent = self._walker.parent_position(parent)
             if self._indent > 0 and grandparent is not None:
                 parent_sib = self._walker.next_sibbling_position(parent)
-                space_width = self._indent - 1 * (parent_sib is not None)
+                draw_vbar = parent_sib is not None and self._arrow_vbar_char is not None
+                space_width = self._indent - 1 * (draw_vbar)
                 if space_width > 0:
-                    void = urwid.AttrMap(urwid.SolidFill(' '), self._void_att)
+                    void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
                     acc.insert(0, ((space_width, void)))
-                if parent_sib is not None:
+                if draw_vbar:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
-                    bar = urwid.AttrMap(barw, self._arrow_vbar_att)
+                    bar = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
                     acc.insert(0, ((1, bar)))
             return self._construct_spacer(parent, acc)
         else:
             return acc
+
+    def _construct_first_indent(self, pos):
+        """
+        build spacer to occupy the first indentation level from pos to the
+        left. This is separate as it adds arrowtip widgets etc.
+        """
+        void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
+        cols = []
+        hbar_width = self._indent
+
+        # connector symbol, either L or |- shaped.
+        connectorw = None
+        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
+            if self._arrow_connector_tchar is not None:
+                connectorw = urwid.SolidFill(self._arrow_connector_tchar)
+                hbar_width -= 1
+        else:  # L shaped
+            if self._arrow_connector_lchar is not None:
+                connectorw = urwid.SolidFill(self._arrow_connector_lchar)
+                hbar_width -= 1
+        if connectorw is not None:
+            # wrap the widget into an AttrMap to apply colouring attribute
+            att = self._arrow_connector_att or self._arrow_att
+            connector = urwid.AttrMap(connectorw, att)
+            # pile up connector and bar
+            spacer = urwid.Pile([(1, connector), void])
+            cols.append((1, spacer))
+
+        #arrow tip
+        if self._indent > 1:
+            if self._arrow_tip_char:
+                arrow_tip = urwid.SolidFill(self._arrow_tip_char)
+                at = urwid.AttrMap(arrow_tip, self._arrow_tip_att or self._arrow_att)
+                at_spacer = urwid.Pile([(1, at), void])
+                cols.append((1, at_spacer))
+                hbar_width -= 1
+
+        # bar between connector and arrow tip
+        if hbar_width > 0:
+            barw = urwid.SolidFill(self._arrow_hbar_char)
+            bar = urwid.AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
+            hb_spacer = urwid.Pile([(1, bar), void])
+            cols.insert(-1, (hbar_width, hb_spacer))
+        return cols
 
     def _construct_line(self, pos):
         """
@@ -95,34 +140,7 @@ class ListWalkerAdapter(urwid.ListWalker):
             # Construct arrow leading from parent here,
             # if we have a parent and indentation is turned on
             if self._indent > 0 and parent is not None:
-                void = urwid.AttrMap(urwid.SolidFill(' '), self._void_att)
-                # connector symbol, either L or |- shaped.
-                # wrap the char into a SolidFill
-                if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
-                    connectorw = urwid.SolidFill(self._arrow_connector_tchar)
-                else:  # L shaped
-                    connectorw = urwid.SolidFill(self._arrow_connector_lchar)
-                # wrap the widget into an AttrMap to apply colouring attribute
-                connector = urwid.AttrMap(connectorw, self._arrow_vbar_att)
-                # construct vertical bar part
-                barw = urwid.SolidFill(self._arrow_vbar_char)
-                bar = urwid.AttrMap(barw, self._arrow_vbar_att)
-                # pile up connector and bar
-                spacer = urwid.Pile([(1, connector), void])
-                cols.append((1, spacer))
-
-                # bar between connector and arrow tip
-                if self._indent > 2:
-                    barw = urwid.SolidFill(self._arrow_hbar_char)
-                    bar = urwid.AttrMap(barw, self._arrow_hbar_att)
-                    hb_spacer = urwid.Pile([(1, bar), void])
-                    cols.append((self._indent - 2, hb_spacer))
-                #arrow tip
-                if self._indent > 1:
-                    arrow_tip = urwid.SolidFill(self._arrow_tip_char)
-                    at = urwid.AttrMap(arrow_tip, self._arrow_tip_att)
-                    hb_spacer = urwid.Pile([(1, at), void])
-                    cols.append((1, hb_spacer))
+                cols = cols + self._construct_first_indent(pos)
 
             # add the original widget for this line
             cols.append(original_widget)
