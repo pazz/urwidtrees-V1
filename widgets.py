@@ -84,26 +84,29 @@ class ListWalkerAdapter(urwid.ListWalker):
         build spacer to occupy the first indentation level from pos to the
         left. This is separate as it adds arrowtip widgets etc.
         """
-        void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
         cols = []
         hbar_width = self._indent
+        void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
 
         # connector symbol, either L or |- shaped.
         connectorw = None
         if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
             if self._arrow_connector_tchar is not None:
                 connectorw = urwid.SolidFill(self._arrow_connector_tchar)
+                barw = urwid.SolidFill(self._arrow_vbar_char)
+                below = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
                 hbar_width -= 1
         else:  # L shaped
             if self._arrow_connector_lchar is not None:
                 connectorw = urwid.SolidFill(self._arrow_connector_lchar)
+                below = void
                 hbar_width -= 1
         if connectorw is not None:
             # wrap the widget into an AttrMap to apply colouring attribute
             att = self._arrow_connector_att or self._arrow_att
             connector = urwid.AttrMap(connectorw, att)
             # pile up connector and bar
-            spacer = urwid.Pile([(1, connector), void])
+            spacer = urwid.Pile([(1, connector), below])
             cols.append((1, spacer))
 
         #arrow tip
