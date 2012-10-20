@@ -28,12 +28,15 @@ palette = [
 ]
 
 # define a test tree
-tree = (FocusableText('root'), [])
+tree = (FocusableText('ROOT (0,)'), [])
 for i in range(5):
-    subtree = (FocusableText('parent %d' % i), [])
-    for j in range(5):
-        leaf = (FocusableText('child %d.%d' % (i, j)), None)
-        subtree[1].append(leaf)
+    subtree = (FocusableText('NODE(0,%d)' % i), [])
+    for j in range(2):
+        subsubtree = (FocusableText('NODE (0.%d.%d)' % (i, j)), [])
+        for k in range(3):
+            leaf = (FocusableText('LEAF (0.%d.%d.%d)' % (i, j, k)), None)
+            subsubtree[1].append(leaf)
+        subtree[1].append(subsubtree)
     tree[1].append(subtree)
 
 # define a list of trees to be passed on to SimpleTreeWalker
@@ -41,17 +44,18 @@ forrest = [tree]
 
 if __name__ == "__main__":
     logging.basicConfig(filename='example.log', level=logging.DEBUG)
-    S = SimpleTreeWalker(forrest)  # get a Walker
-    treebox = TreeBox(S,
-                      indent=3,
-                      # double
+    treebox = TreeBox(SimpleTreeWalker(forrest),        # get a Walker
+                      # decoration_adapter=None,        # turn off decoration
+                      ## remaining keywords are passed to the decoration_adapter
+                      # indent=3,                         # indentation between levels
+                      ## double bars
                       # arrow_hbar=u'\u2550',
                       # arrow_vbar=u'\u2551',
                       # arrow_tip=u'\u25b6',
                       # arrow_connector_t=u'\u2560',
                       # arrow_connector_l=u'\u255a',
-                      #thin
-                      arrow_hbar_char=u'\u2500',
+                      # thin bars
+                      #arrow_hbar_char=u'\u2500',
                       arrow_att='bars',
                       #arrow_hbar_att='bars',
                       #arrow_vbar_char=u'\u2502',
@@ -59,7 +63,7 @@ if __name__ == "__main__":
                       #arrow_vbar_att='bars',
                       arrow_tip_char=u'\u27a4',
                       arrow_tip_att='arrowtip',
-                      arrow_connector_att='connectors',
+                      #arrow_connector_att='connectors',
                       #arrow_connector_tchar=None,
                       #arrow_connector_lchar=None,
                       # arrow_connector_t=u'\u251c',
