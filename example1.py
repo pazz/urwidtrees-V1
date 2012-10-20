@@ -4,6 +4,7 @@ import logging
 import urwid
 from walkers import SimpleTreeWalker
 from widgets import TreeBox
+from widgets import CollapsibleListWalkerAdapter
 
 
 class FocusableText(urwid.WidgetWrap):
@@ -46,8 +47,13 @@ if __name__ == "__main__":
     logging.basicConfig(filename='example.log', level=logging.DEBUG)
     treebox = TreeBox(SimpleTreeWalker(forrest),        # get a Walker
                       # decoration_adapter=None,        # turn off decoration
+                      decoration_adapter=CollapsibleListWalkerAdapter,
+                      selectable_icons=True,
                       ## remaining keywords are passed to the decoration_adapter
-                      # indent=3,                         # indentation between levels
+                      indent=3,                         # indentation between levels
+                      icon_expanded_char=u'\u2295',
+                      icon_collapsed_char=u'\u2297',
+                      icon_focussed_att='focus',
                       ## double bars
                       # arrow_hbar=u'\u2550',
                       # arrow_vbar=u'\u2551',

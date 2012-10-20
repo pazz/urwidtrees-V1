@@ -1,6 +1,18 @@
 import urwid
-#import logging
+import logging
 
+class SelectableIcon(urwid.WidgetWrap):
+    def __init__(self, txt, handle_keypress=None):
+        self._handle_keypress = handle_keypress
+        urwid.WidgetWrap.__init__(self, urwid.SolidFill(txt))
+
+    def selectable(self):
+        return True
+
+    def keypress(self, size, key):
+        if self._handle_keypress:
+            key = self._handle_keypress(key)
+        return key
 
 class TreeBoxError(Exception):
     pass
@@ -73,11 +85,27 @@ class ListWalkerAdapter(urwid.ListWalker):
                     acc.insert(0, ((space_width, void)))
                 if draw_vbar:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
-                    bar = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
+                    bar = urwid.AttrMap(
+                        barw, self._arrow_vbar_att or self._arrow_att)
                     acc.insert(0, ((1, bar)))
             return self._construct_spacer(parent, acc)
         else:
             return acc
+
+    def _construct_connector(self, pos):
+        # connector symbol, either L or |- shaped.
+        connectorw = None
+        connector = None
+        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
+            if self._arrow_connector_tchar is not None:
+                connectorw = urwid.SolidFill(self._arrow_connector_tchar)
+        else:  # L shaped
+            if self._arrow_connector_lchar is not None:
+                connectorw = urwid.SolidFill(self._arrow_connector_lchar)
+        if connectorw is not None:
+            att = self._arrow_connector_att or self._arrow_att
+            connector = urwid.AttrMap(connectorw, att)
+        return connector
 
     def _construct_first_indent(self, pos):
         """
@@ -88,23 +116,15 @@ class ListWalkerAdapter(urwid.ListWalker):
         hbar_width = self._indent
         void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
 
-        # connector symbol, either L or |- shaped.
-        connectorw = None
-        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
-            if self._arrow_connector_tchar is not None:
-                connectorw = urwid.SolidFill(self._arrow_connector_tchar)
+        connector = self._construct_connector(pos)
+        if connector is not None:
+            hbar_width -= 1
+            if self._walker.next_sibbling_position(pos) is not None:
                 barw = urwid.SolidFill(self._arrow_vbar_char)
-                below = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
-                hbar_width -= 1
-        else:  # L shaped
-            if self._arrow_connector_lchar is not None:
-                connectorw = urwid.SolidFill(self._arrow_connector_lchar)
+                below = urwid.AttrMap(barw, self._arrow_vbar_att or
+                                      self._arrow_att)
+            else:
                 below = void
-                hbar_width -= 1
-        if connectorw is not None:
-            # wrap the widget into an AttrMap to apply colouring attribute
-            att = self._arrow_connector_att or self._arrow_att
-            connector = urwid.AttrMap(connectorw, att)
             # pile up connector and bar
             spacer = urwid.Pile([(1, connector), below])
             cols.append((1, spacer))
@@ -113,7 +133,8 @@ class ListWalkerAdapter(urwid.ListWalker):
         if self._indent > 1:
             if self._arrow_tip_char:
                 arrow_tip = urwid.SolidFill(self._arrow_tip_char)
-                at = urwid.AttrMap(arrow_tip, self._arrow_tip_att or self._arrow_att)
+                at = urwid.AttrMap(
+                    arrow_tip, self._arrow_tip_att or self._arrow_att)
                 at_spacer = urwid.Pile([(1, at), void])
                 cols.append((1, at_spacer))
                 hbar_width -= 1
@@ -152,6 +173,58 @@ class ListWalkerAdapter(urwid.ListWalker):
         return line
 
 
+class CollapsibleListWalkerAdapter(ListWalkerAdapter):
+    def __init__(self, walker,
+                 icon_expanded_char='-',
+                 icon_expanded_att=None,
+                 icon_collapsed_char='+',
+                 icon_collapsed_att=None,
+                 icon_focussed_att=None,
+                 default_collapsed=False,
+                 divergent_positions=[],
+                 selectable_icons=False,
+                 **kwargs):
+        self._icon_expanded_char = icon_expanded_char
+        self._icon_expanded_att = icon_expanded_att
+        self._icon_collapsed_char = icon_collapsed_char
+        self._icon_collapsed_att = icon_collapsed_att
+        self._icon_focussed_att = icon_focussed_att
+        self._selectable_icons = selectable_icons
+        self._default_collapsed = default_collapsed
+        self._divergent_positions = divergent_positions
+        ListWalkerAdapter.__init__(self, walker, **kwargs)
+
+    def _construct_connector(self, pos):
+        collapsed = self._default_collapsed
+        if pos in self._divergent_positions:
+            collapsed = not collapsed
+        if collapsed:
+            if self._selectable_icons:
+                def keypress(key):
+                    if key == '-':
+                        self.collapse(pos)
+                        key = None
+                    return key
+                icon = SelectableIcon(self._icon_collapsed_char, keypress)
+            else:
+                icon = urwid.SolidFill(self._icon_collapsed_att)
+            att = self._icon_collapsed_att or self._arrow_connector_att or self._arrow_att
+            connector = urwid.AttrMap(icon, att, self._icon_focussed_att)
+        else:
+            if self._selectable_icons:
+                def keypress(key):
+                    if key == '+':
+                        self.expand(pos)
+                        key = None
+                    return key
+                icon = SelectableIcon(self._icon_expanded_char, keypress)
+            else:
+                icon = urwid.SolidFill(self._icon_expanded_char)
+            att = self._icon_expanded_att or self._arrow_connector_att or self._arrow_att
+            connector = urwid.AttrMap(icon, att, self._icon_focussed_att)
+        return connector
+
+
 class TreeBox(urwid.WidgetWrap):
     """A widget representing something in a nested tree display."""
     _selectable = True
@@ -159,7 +232,8 @@ class TreeBox(urwid.WidgetWrap):
     def __init__(self, walker, decoration_adapter=ListWalkerAdapter, **kwargs):
         self._walker = walker
         if decoration_adapter is not None:
-            walker = ListWalkerAdapter(walker, **kwargs)
+            #walker = CollapsibleListWalkerAdapter(walker, **kwargs)
+            walker = decoration_adapter(walker, **kwargs)
         self._outer_list = urwid.ListBox(walker)
         self.__super.__init__(self._outer_list)
 
@@ -192,14 +266,15 @@ class TreeBox(urwid.WidgetWrap):
         focus to parent/first child and next/previous sibbling respectively.
         All other keys are passed to the underlying ListBox.
         """
-        if key in ['left', 'right', 'page up', 'page down']:
-            if key == 'left':
+        logging.debug('got: %s' % key)
+        if key in ['[',']','<','>']:
+            if key == '[':
                 self.focus_parent()
-            elif key == 'right':
+            elif key == ']':
                 self.focus_first_child()
-            elif key == 'page up':
+            elif key == '<':
                 self.focus_prev_sibbling()
-            elif key == 'page down':
+            elif key == '>':
                 self.focus_next_sibbling()
             # This is a hack around ListBox misbehaving:
             # it seems impossible to set the focus without calling keypress as
