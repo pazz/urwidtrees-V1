@@ -156,10 +156,11 @@ class TreeBox(urwid.WidgetWrap):
     """A widget representing something in a nested tree display."""
     _selectable = True
 
-    def __init__(self, walker, **kwargs):
+    def __init__(self, walker, decoration_adapter=ListWalkerAdapter, **kwargs):
         self._walker = walker
-        self._adapter = ListWalkerAdapter(walker, **kwargs)
-        self._outer_list = urwid.ListBox(self._adapter)
+        if decoration_adapter is not None:
+            walker = ListWalkerAdapter(walker, **kwargs)
+        self._outer_list = urwid.ListBox(walker)
         self.__super.__init__(self._outer_list)
 
     def get_focus(self):
