@@ -4,6 +4,7 @@ import urwid
 import os
 from walkers import LazyTreeWalker
 from widgets import TreeBox
+from widgets import IndentedTreeListWalker
 
 
 class FocusableText(urwid.WidgetWrap):
@@ -95,6 +96,7 @@ palette = [
 if __name__ == "__main__":
     cwd = os.getcwd()  # get current working directory
     D = DirectoryWalker(cwd)  # get a Walker with cwd as initial focus
-    treebox = TreeBox(D, indent=4)  # stick it into a TreeBox
-    #treebox = urwid.ListBox(D)  # stick it into a ListBox
+    I = IndentedTreeListWalker(D)  # add some decoration
+    treebox = TreeBox(I)  # stick it into a TreeBox
+    treebox = urwid.AttrMap(treebox, 'body')  # use body attribute for gaps
     urwid.MainLoop(treebox, palette).run()  # go
