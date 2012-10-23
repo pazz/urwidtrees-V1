@@ -35,93 +35,20 @@ class TreeWalker(object):
         return res
 
     def get_focus(self):
-        """return focussed widget. Needed by ListBox!"""
+        """return focussed widget."""
         return self._get(self.focus)
 
     def set_focus(self, pos):
-        """set focus to widget at given pos. Needed by ListBox!"""
+        """set focus to widget at given pos."""
         self.focus = pos
-        self._modified()
+        #self._modified()
 
-    def get_next(self, pos):
-        """
-        get next widget after given position in depth-first order.
-        Needed by ListBox!
-        """
-        return self._get(self.next_position(pos))
-
-    def get_prev(self, pos):
-        """
-        get previous widget after given position in depth-first order.
-        Needed by ListBox!
-        """
-        return self._get(self.prev_position(pos))
-
-# Getter for widgets in various directions. IMHO this clutters the API
-# and TreeBox widgets shoud rather directly use the position-getter
-# in combination with __getitem__.
-#
-#    def get_next_sibbling(self, pos):
-#        return self._get(self.next_sibbling_position(pos))
-#
-#    def get_prev_sibbling(self, pos):
-#        return self._get(self.prev_sibbling_position(pos))
-#
-#    def get_parent(self, pos):
-#        return self._get(self.parent_position(pos))
-#
-#    def get_first_child(self, pos):
-#        return self._get(self.first_child_position(pos))
-#
-#    def get_last_child(self, pos):
-#        return self._get(self.last_child_position(pos))
-
-    def _next_of_kin(self, pos):
-        """
-        Looks up the next sibbling of the closest ancestor with next sibblings.
-        This helper is used later to compute next_position in DF-order.
-        """
-        candidate = None
-        parent = self.parent_position(pos)
-        if parent is not None:
-            candidate = self.next_sibbling_position(parent)
-            if candidate is None:
-                candidate = self._next_of_kin(parent)
-        return candidate
-
-    def next_position(self, pos):
-        """returns the next position in depth-first order"""
-        candidate = None
-        if pos is not None:
-            candidate = self.first_child_position(pos)
-            if candidate is None:
-                candidate = self.next_sibbling_position(pos)
-                if candidate is None:
-                    candidate = self._next_of_kin(pos)
-        return candidate
-
-    def _last_decendant_position(self, pos):
-        """
-        Looks up the last node in DF-order in the subtree starting a pos.
-        This helper is used later to compute prev_position in DF-order.
-        """
+    def last_decendant_position(self, pos):
+        """Looks up the last node in the subtree starting a pos."""
         candidate = pos
         last_child = self.last_child_position(pos)
         if last_child is not None:
-            candidate = self._last_decendant_position(last_child)
-        return candidate
-
-    def prev_position(self, pos):
-        """returns the previous position in depth-first order"""
-        candidate = None
-        if pos is not None:
-            prevsib = self.prev_sibbling_position(pos)  # is None if first
-            if prevsib is not None:
-                candidate = self._last_decendant_position(prevsib)
-            else:
-                parent = self.parent_position(pos)
-                if parent is not None:
-                    candidate = parent
+            candidate = self.last_decendant_position(last_child)
         return candidate
 
 # To be overwritten by subclasses
@@ -228,6 +155,3 @@ class SimpleTreeWalker(TreeWalker):
 
     def prev_sibbling_position(self, pos):
         return pos[:-1] + (pos[-1] - 1,) if (pos[-1] > 0) else None
-
-
-
