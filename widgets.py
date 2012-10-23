@@ -1,13 +1,153 @@
 import urwid
-#import logging
+from urwid import AttrMap, Text, WidgetWrap, ListBox
 
 
 class TreeBoxError(Exception):
     pass
 
 
-class ListWalkerAdapter(urwid.ListWalker):
+class TreeListWalker(urwid.ListWalker):
+    """
+    Base class for Decoration adapters:
+    Objects of this type wrap a given TreeWalker and turn it into
+    a ListWalker compatible with ListBox.
+    """
+    def __init__(self, treewalker):
+        self._walker = treewalker
+
+    def __getitem__(self, pos):
+        return self._walker[pos]
+
+    def _get(self, pos):
+        """loads widget at given position; handling invalid arguments"""
+        res = None, None
+        if pos is not None:
+            try:
+                res = self[pos], pos
+            except (IndexError, KeyError):
+                pass
+        return res
+
+    # List Walker API
+    def get_focus(self):
+        widget, position = self._walker.get_focus()
+        return self[position], position
+
+    def set_focus(self, pos):
+        return self._walker.set_focus(pos)
+
+    def get_next(self, pos):
+        return self._get(self.next_position(pos))
+
+    def get_prev(self, pos):
+        return self._get(self.prev_position(pos))
+
+    def _next_of_kin(self, pos):
+        """
+        Looks up the next sibbling of the closest ancestor with next sibblings.
+        This helper is used later to compute next_position in DF-order.
+        """
+        candidate = None
+        parent = self.parent_position(pos)
+        if parent is not None:
+            candidate = self.next_sibbling_position(parent)
+            if candidate is None:
+                candidate = self._next_of_kin(parent)
+        return candidate
+
+    def next_position(self, pos):
+        """returns the next position in depth-first order"""
+        candidate = None
+        if pos is not None:
+            candidate = self.first_child_position(pos)
+            if candidate is None:
+                candidate = self.next_sibbling_position(pos)
+                if candidate is None:
+                    candidate = self._next_of_kin(pos)
+        return candidate
+
+    def prev_position(self, pos):
+        """returns the previous position in depth-first order"""
+        candidate = None
+        if pos is not None:
+            prevsib = self.prev_sibbling_position(pos)  # is None if first
+            if prevsib is not None:
+                candidate = self._walker.last_decendant_position(prevsib)
+            else:
+                parent = self.parent_position(pos)
+                if parent is not None:
+                    candidate = parent
+        return candidate
+    # end of List Walker API
+
+    # Tree Walker API
+    def prev_sibbling_position(self, pos):
+        return self._walker.prev_sibbling_position(pos)
+
+    def next_sibbling_position(self, pos):
+        return self._walker.next_sibbling_position(pos)
+
+    def parent_position(self, pos):
+        return self._walker.parent_position(pos)
+
+    def first_child_position(self, pos):
+        return self._walker.first_child_position(pos)
+    # end of Tree Walker API
+
+
+class IndentedTreeListWalker(TreeListWalker):
+    """
+    A TreeListWalker that indents tree nodes to the left according to their
+    depth in the tree.
+    """
+    def __init__(self, treewalker, indent=2):
+        self._indent = indent
+        TreeListWalker.__init__(self, treewalker)
+
+    def __getitem__(self, pos):
+        return self._construct_line(pos)
+
+    def _construct_spacer(self, pos, acc):
+        """
+        build a spacer that occupies the horizontally indented space between
+        pos's parent and the root node. It will return a list of tuples to be
+        fed into a Columns widget.
+        """
+        parent = self._walker.parent_position(pos)
+        if parent is not None:
+            if self._indent > 0:
+                parent_sib = self._walker.next_sibbling_position(parent)
+                acc.insert(0, ((self._indent, urwid.SolidFill(' '))))
+            return self._construct_spacer(parent, acc)
+        else:
+            return acc
+
+    def _construct_line(self, pos):
+        """
+        builds a list element for given position in the tree.
+        It consists of the original widget taken from the TreeWalker and some
+        decoration columns depending on the existence of parent and sibbling
+        positions. The result is a urwid.Culumns widget.
+        """
+        line = None
+        if pos is not None:
+            original_widget = self._walker[pos]
+            cols = self._construct_spacer(pos, [])
+
+            # add the original widget for this line
+            cols.append(original_widget)
+            # construct a Columns, defining all spacer as Box widgets
+            line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
+        return line
+
+
+class ArrowTreeListWalker(IndentedTreeListWalker):
+    """
+    TreeListWalker that decorates three, indenting nodes according to their
+    depth and drawing arrows to indicate the tree structure.
+    """
     def __init__(self, walker, indent=2,
+                 childbar_offset=0,
                  arrow_hbar_char=u'\u2500',
                  arrow_hbar_att=None,
                  arrow_vbar_char=u'\u2502',
@@ -18,8 +158,8 @@ class ListWalkerAdapter(urwid.ListWalker):
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
                  arrow_connector_att=None):
-        self._walker = walker
-        self._indent = indent
+        IndentedTreeListWalker.__init__(self, walker, indent)
+        self._childbar_offset = childbar_offset
         self._arrow_hbar_char = arrow_hbar_char
         self._arrow_hbar_att = arrow_hbar_att
         self._arrow_vbar_char = arrow_vbar_char
@@ -32,19 +172,6 @@ class ListWalkerAdapter(urwid.ListWalker):
         self._arrow_att = arrow_att
         self._cache = {}
 
-    def get_focus(self):
-        widget, position = self._walker.get_focus()
-        return self[position], position
-
-    def set_focus(self, pos):
-        return self._walker.set_focus(pos)
-
-    def next_position(self, pos):
-        return self._walker.next_position(pos)
-
-    def prev_position(self, pos):
-        return self._walker.prev_position(pos)
-
     def __getitem__(self, pos):
         candidate = None
         if pos in self._cache:
@@ -56,10 +183,9 @@ class ListWalkerAdapter(urwid.ListWalker):
 
     def _construct_spacer(self, pos, acc):
         """
-        build a spacer that occupies the horizontally indented
-        space between pos's parent and the root node.
-        It will return a list of tuples to be fed into a Columns
-        widget.
+        build a spacer that occupies the horizontally indented space between
+        pos's parent and the root node. It will return a list of tuples to be
+        fed into a Columns widget.
         """
         parent = self._walker.parent_position(pos)
         if parent is not None:
@@ -67,72 +193,96 @@ class ListWalkerAdapter(urwid.ListWalker):
             if self._indent > 0 and grandparent is not None:
                 parent_sib = self._walker.next_sibbling_position(parent)
                 draw_vbar = parent_sib is not None and self._arrow_vbar_char is not None
-                space_width = self._indent - 1 * (draw_vbar)
+                space_width = self._indent - 1 * (
+                    draw_vbar) - self._childbar_offset
                 if space_width > 0:
-                    void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
+                    void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
                     acc.insert(0, ((space_width, void)))
                 if draw_vbar:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
-                    bar = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
+                    bar = AttrMap(
+                        barw, self._arrow_vbar_att or self._arrow_att)
                     acc.insert(0, ((1, bar)))
             return self._construct_spacer(parent, acc)
         else:
             return acc
 
+    def _construct_connector(self, pos):
+        """
+        build widget to be used as "connector" bit between the vertical bar
+        between sibblings and their respective horizontab bars leading to the
+        arrow tip
+        """
+        # connector symbol, either L or |- shaped.
+        connectorw = None
+        connector = None
+        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
+            if self._arrow_connector_tchar is not None:
+                connectorw = Text(self._arrow_connector_tchar)
+        else:  # L shaped
+            if self._arrow_connector_lchar is not None:
+                connectorw = Text(self._arrow_connector_lchar)
+        if connectorw is not None:
+            att = self._arrow_connector_att or self._arrow_att
+            connector = AttrMap(connectorw, att)
+        return connector
+
+    def _construct_arrow_tip(self, pos):
+        arrow_tip = None
+        if self._arrow_tip_char:
+            txt = Text(self._arrow_tip_char)
+            arrow_tip = AttrMap(txt, self._arrow_tip_att or self._arrow_att)
+        return arrow_tip
+
     def _construct_first_indent(self, pos):
         """
         build spacer to occupy the first indentation level from pos to the
-        left. This is separate as it adds arrowtip widgets etc.
+        left. This is separate as it adds arrowtip and sibbling connector.
         """
         cols = []
-        hbar_width = self._indent
-        void = urwid.AttrMap(urwid.SolidFill(' '), self._arrow_att)
+        void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
+        available_width = self._indent
 
-        # connector symbol, either L or |- shaped.
-        connectorw = None
-        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
-            if self._arrow_connector_tchar is not None:
-                connectorw = urwid.SolidFill(self._arrow_connector_tchar)
+        connector = self._construct_connector(pos)
+        if connector is not None:
+            width = connector.pack()[0]
+            if width > available_width:
+                raise TreeBoxError('too little space for requested decoration')
+            available_width -= width
+            if self._walker.next_sibbling_position(pos) is not None:
                 barw = urwid.SolidFill(self._arrow_vbar_char)
-                below = urwid.AttrMap(barw, self._arrow_vbar_att or self._arrow_att)
-                hbar_width -= 1
-        else:  # L shaped
-            if self._arrow_connector_lchar is not None:
-                connectorw = urwid.SolidFill(self._arrow_connector_lchar)
+                below = AttrMap(barw, self._arrow_vbar_att or
+                                self._arrow_att)
+            else:
                 below = void
-                hbar_width -= 1
-        if connectorw is not None:
-            # wrap the widget into an AttrMap to apply colouring attribute
-            att = self._arrow_connector_att or self._arrow_att
-            connector = urwid.AttrMap(connectorw, att)
             # pile up connector and bar
-            spacer = urwid.Pile([(1, connector), below])
-            cols.append((1, spacer))
+            spacer = urwid.Pile([('pack', connector), below])
+            cols.append((width, spacer))
 
         #arrow tip
-        if self._indent > 1:
-            if self._arrow_tip_char:
-                arrow_tip = urwid.SolidFill(self._arrow_tip_char)
-                at = urwid.AttrMap(arrow_tip, self._arrow_tip_att or self._arrow_att)
-                at_spacer = urwid.Pile([(1, at), void])
-                cols.append((1, at_spacer))
-                hbar_width -= 1
+        at = self._construct_arrow_tip(pos)
+        if at is not None:
+            width = at.pack()[0]
+            if width > available_width:
+                raise TreeBoxError('too little space for requested decoration')
+            available_width -= width
+            at_spacer = urwid.Pile([('pack', at), void])
+            cols.append((width, at_spacer))
 
         # bar between connector and arrow tip
-        if hbar_width > 0:
+        if available_width > 0:
             barw = urwid.SolidFill(self._arrow_hbar_char)
-            bar = urwid.AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
+            bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
             hb_spacer = urwid.Pile([(1, bar), void])
-            cols.insert(-1, (hbar_width, hb_spacer))
+            cols.insert(1, (available_width, hb_spacer))
         return cols
 
     def _construct_line(self, pos):
         """
         builds a list element for given position in the tree.
-        It consists of the original widget taken from the TreeWalker
-        and some decoration columns depending on the existence
-        of parent and sibbling positions.
-        The result is a urwid.Culumns widget.
+        It consists of the original widget taken from the TreeWalker and some
+        decoration columns depending on the existence of parent and sibbling
+        positions. The result is a urwid.Culumns widget.
         """
         line = None
         if pos is not None:
@@ -152,37 +302,41 @@ class ListWalkerAdapter(urwid.ListWalker):
         return line
 
 
-class TreeBox(urwid.WidgetWrap):
+class TreeBox(WidgetWrap):
     """A widget representing something in a nested tree display."""
     _selectable = True
 
-    def __init__(self, walker, decoration_adapter=ListWalkerAdapter, **kwargs):
+    def __init__(self, walker, **kwargs):
+        if not isinstance(walker, TreeListWalker):
+            walker = TreeListWalker(walker)
         self._walker = walker
-        if decoration_adapter is not None:
-            walker = ListWalkerAdapter(walker, **kwargs)
-        self._outer_list = urwid.ListBox(walker)
+        self._outer_list = ListBox(walker)
         self.__super.__init__(self._outer_list)
 
     def get_focus(self):
         return self._outer_list.get_focus()
 
     def focus_parent(self):
-        parent = self._walker.parent_position(self._walker.focus)
+        w, focuspos = self._walker.get_focus()
+        parent = self._walker.parent_position(focuspos)
         if parent is not None:
             self._outer_list.set_focus(parent)
 
     def focus_first_child(self):
-        child = self._walker.first_child_position(self._walker.focus)
+        w, focuspos = self._walker.get_focus()
+        child = self._walker.first_child_position(focuspos)
         if child is not None:
             self._outer_list.set_focus(child)
 
     def focus_next_sibbling(self):
-        sib = self._walker.next_sibbling_position(self._walker.focus)
+        w, focuspos = self._walker.get_focus()
+        sib = self._walker.next_sibbling_position(focuspos)
         if sib is not None:
             self._outer_list.set_focus(sib)
 
     def focus_prev_sibbling(self):
-        sib = self._walker.prev_sibbling_position(self._walker.focus)
+        w, focuspos = self._walker.get_focus()
+        sib = self._walker.prev_sibbling_position(focuspos)
         if sib is not None:
             self._outer_list.set_focus(sib)
 
@@ -192,14 +346,14 @@ class TreeBox(urwid.WidgetWrap):
         focus to parent/first child and next/previous sibbling respectively.
         All other keys are passed to the underlying ListBox.
         """
-        if key in ['left', 'right', 'page up', 'page down']:
-            if key == 'left':
+        if key in ['[', ']', '<', '>']:
+            if key == '[':
                 self.focus_parent()
-            elif key == 'right':
+            elif key == ']':
                 self.focus_first_child()
-            elif key == 'page up':
+            elif key == '<':
                 self.focus_prev_sibbling()
-            elif key == 'page down':
+            elif key == '>':
                 self.focus_next_sibbling()
             # This is a hack around ListBox misbehaving:
             # it seems impossible to set the focus without calling keypress as

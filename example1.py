@@ -3,7 +3,9 @@
 import logging
 import urwid
 from walkers import SimpleTreeWalker
-from widgets import TreeBox
+from widgets import TreeBox, TreeListWalker
+from widgets import IndentedTreeListWalker
+from widgets import ArrowTreeListWalker
 
 
 class FocusableText(urwid.WidgetWrap):
@@ -44,36 +46,45 @@ forrest = [tree]
 
 if __name__ == "__main__":
     logging.basicConfig(filename='example.log', level=logging.DEBUG)
-    treebox = TreeBox(SimpleTreeWalker(forrest),        # get a Walker
-                      # decoration_adapter=None,        # turn off decoration
-                      ## remaining keywords are passed to the decoration_adapter
-                      # indent=3,                         # indentation between levels
-                      ## double bars
-                      # arrow_hbar=u'\u2550',
-                      # arrow_vbar=u'\u2551',
-                      # arrow_tip=u'\u25b6',
-                      # arrow_connector_t=u'\u2560',
-                      # arrow_connector_l=u'\u255a',
-                      # thin bars
-                      #arrow_hbar_char=u'\u2500',
-                      arrow_att='bars',
-                      #arrow_hbar_att='bars',
-                      #arrow_vbar_char=u'\u2502',
-                      #arrow_vbar_char=None,
-                      #arrow_vbar_att='bars',
-                      arrow_tip_char=u'\u27a4',
-                      arrow_tip_att='arrowtip',
-                      #arrow_connector_att='connectors',
-                      #arrow_connector_tchar=None,
-                      #arrow_connector_lchar=None,
-                      # arrow_connector_t=u'\u251c',
-                      # arrow_connector_l=u'\u2514', # u'\u2570' # round
-                      #thick
-                      #arrow_hbar_char=u'\u2501',
-                      #arrow_hbar_att='highlight',
-                      # arrow_vbar=u'\u2503',
-                      # arrow_tip=u'\u25b6',
-                      # arrow_connector_t=u'\u2523',
-                      # arrow_connector_l=u'\u2517'
-                      )  # stick it into a ListBox
-    urwid.MainLoop(treebox, palette).run()  # go
+    S = SimpleTreeWalker(forrest)
+    #D = IndentedTreeListWalker(S, indent=5)
+    D = ArrowTreeListWalker(S, indent=3,
+                            #indent_att='body',
+                            #childbar_offset=1,
+                            #arrow_hbar_char=u'\u2550',
+                            #arrow_vbar_char=u'\u2551',
+                            #arrow_tip_char=None,#u'\u25b6',
+                            #arrow_connector_tchar=u'\u2560',
+                            #arrow_connector_lchar=u'\u255a',)
+
+                      ### double bars
+                      ## arrow_hbar=u'\u2550',
+                      ## arrow_vbar=u'\u2551',
+                      ## arrow_tip=u'\u25b6',
+                      ## arrow_connector_t=u'\u2560',
+                      ## arrow_connector_l=u'\u255a',
+
+                      ## thin bars
+                      ##arrow_hbar_char=u'\u2500',
+                      #arrow_att='bars',
+                      ##arrow_hbar_att='bars',
+                      ##arrow_vbar_char=u'\u2502',
+                      ##arrow_vbar_char=None,
+                      ##arrow_vbar_att='bars',
+                      #arrow_tip_char='>>',  # =u'\u27a4',
+                      #arrow_tip_att='arrowtip',
+                      ##arrow_connector_att='connectors',
+                      ##arrow_connector_tchar='TT',
+                      ##arrow_connector_lchar=None,
+                      ## arrow_connector_t=u'\u251c',
+                      ## arrow_connector_l=u'\u2514', # u'\u2570' # round
+                      ##thick
+                      ##arrow_hbar_char=u'\u2501',
+                      ##arrow_hbar_att='highlight',
+                      ## arrow_vbar=u'\u2503',
+                      ## arrow_tip=u'\u25b6',
+                      ## arrow_connector_t=u'\u2523',
+                      ## arrow_connector_l=u'\u2517'
+                           )
+    T = urwid.AttrMap(TreeBox(D),'body')
+    urwid.MainLoop(T, palette).run()  # go
