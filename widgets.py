@@ -1,5 +1,6 @@
 import urwid
 from urwid import AttrMap, Text, WidgetWrap, ListBox
+import logging
 
 
 class TreeBoxError(Exception):
@@ -55,6 +56,14 @@ class TreeListWalker(urwid.ListWalker):
                 candidate = self._next_of_kin(parent)
         return candidate
 
+    def _last_decendant_position(self, pos):
+        """Looks up the last node in the subtree starting a pos."""
+        candidate = pos
+        last_child = self.last_child_position(pos)
+        if last_child is not None:
+            candidate = self._last_decendant_position(last_child)
+        return candidate
+
     def next_position(self, pos):
         """returns the next position in depth-first order"""
         candidate = None
@@ -68,11 +77,12 @@ class TreeListWalker(urwid.ListWalker):
 
     def prev_position(self, pos):
         """returns the previous position in depth-first order"""
+        logging.debug('prev of %s' % str(pos))
         candidate = None
         if pos is not None:
             prevsib = self.prev_sibbling_position(pos)  # is None if first
             if prevsib is not None:
-                candidate = self._walker.last_decendant_position(prevsib)
+                candidate = self._last_decendant_position(prevsib)
             else:
                 parent = self.parent_position(pos)
                 if parent is not None:
@@ -92,7 +102,26 @@ class TreeListWalker(urwid.ListWalker):
 
     def first_child_position(self, pos):
         return self._walker.first_child_position(pos)
+
+    def last_child_position(self, pos):
+        return self._walker.last_child_position(pos)
     # end of Tree Walker API
+
+
+class CollapsibleTreeListWalker(TreeListWalker):
+    def __init__(self, treewalker, is_collapsed=lambda pos: True):
+        self.is_collapsed = is_collapsed
+        TreeListWalker.__init__(self, treewalker)
+
+    def last_child_position(self, pos):
+        if self.is_collapsed(pos):
+            return None
+        return self._walker.last_child_position(pos)
+
+    def first_child_position(self, pos):
+        if self.is_collapsed(pos):
+            return None
+        return self._walker.first_child_position(pos)
 
 
 class IndentedTreeListWalker(TreeListWalker):
@@ -300,6 +329,7 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
             # construct a Columns, defining all spacer as Box widgets
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
         return line
+
 
 
 class TreeBox(WidgetWrap):

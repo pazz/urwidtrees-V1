@@ -43,14 +43,6 @@ class TreeWalker(object):
         self.focus = pos
         #self._modified()
 
-    def last_decendant_position(self, pos):
-        """Looks up the last node in the subtree starting a pos."""
-        candidate = pos
-        last_child = self.last_child_position(pos)
-        if last_child is not None:
-            candidate = self.last_decendant_position(last_child)
-        return candidate
-
 # To be overwritten by subclasses
     def parent_position(self, pos):
         return None
