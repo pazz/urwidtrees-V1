@@ -261,38 +261,39 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
         available_width = self._indent
 
-        connector = self._construct_connector(pos)
-        if connector is not None:
-            width = connector.pack()[0]
-            if width > available_width:
-                raise TreeBoxError('too little space for requested decoration')
-            available_width -= width
-            if self._walker.next_sibbling_position(pos) is not None:
-                barw = urwid.SolidFill(self._arrow_vbar_char)
-                below = AttrMap(barw, self._arrow_vbar_att or
-                                self._arrow_att)
-            else:
-                below = void
-            # pile up connector and bar
-            spacer = urwid.Pile([('pack', connector), below])
-            cols.append((width, spacer))
+        if self._walker.depth(pos) > 0:
+            connector = self._construct_connector(pos)
+            if connector is not None:
+                width = connector.pack()[0]
+                if width > available_width:
+                    raise TreeBoxError('too little space for requested decoration')
+                available_width -= width
+                if self._walker.next_sibbling_position(pos) is not None:
+                    barw = urwid.SolidFill(self._arrow_vbar_char)
+                    below = AttrMap(barw, self._arrow_vbar_att or
+                                    self._arrow_att)
+                else:
+                    below = void
+                # pile up connector and bar
+                spacer = urwid.Pile([('pack', connector), below])
+                cols.append((width, spacer))
 
-        #arrow tip
-        at = self._construct_arrow_tip(pos)
-        if at is not None:
-            width = at.pack()[0]
-            if width > available_width:
-                raise TreeBoxError('too little space for requested decoration')
-            available_width -= width
-            at_spacer = urwid.Pile([('pack', at), void])
-            cols.append((width, at_spacer))
+            #arrow tip
+            at = self._construct_arrow_tip(pos)
+            if at is not None:
+                width = at.pack()[0]
+                if width > available_width:
+                    raise TreeBoxError('too little space for requested decoration')
+                available_width -= width
+                at_spacer = urwid.Pile([('pack', at), void])
+                cols.append((width, at_spacer))
 
-        # bar between connector and arrow tip
-        if available_width > 0:
-            barw = urwid.SolidFill(self._arrow_hbar_char)
-            bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
-            hb_spacer = urwid.Pile([(1, bar), void])
-            cols.insert(1, (available_width, hb_spacer))
+            # bar between connector and arrow tip
+            if available_width > 0:
+                barw = urwid.SolidFill(self._arrow_hbar_char)
+                bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
+                hb_spacer = urwid.Pile([(1, bar), void])
+                cols.insert(1, (available_width, hb_spacer))
         return cols
 
     def _construct_line(self, pos):
@@ -306,12 +307,13 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         if pos is not None:
             original_widget = self._walker[pos]
             cols = self._construct_spacer(pos, [])
-            parent = self._walker.parent_position(pos)
 
             # Construct arrow leading from parent here,
             # if we have a parent and indentation is turned on
-            if self._indent > 0 and parent is not None:
-                cols = cols + self._construct_first_indent(pos)
+            if self._indent > 0:
+                indent = self._construct_first_indent(pos)
+                if indent is not None:
+                    cols = cols + indent
 
             # add the original widget for this line
             cols.append(original_widget)
@@ -326,6 +328,49 @@ class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
         ArrowTreeListWalker.__init__(self, treelistwalker, **kwargs)
         CollapsibleTLWMixin.__init__(self, is_collapsed=is_collapsed)
 
+    def _construct_first_indent(self, pos):
+        """
+        build spacer to occupy the first indentation level from pos to the
+        left. This is separate as it adds arrowtip and sibbling connector.
+        """
+        cols = []
+        void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
+        available_width = self._indent
+
+        if self._walker.depth(pos) > 0:
+            connector = self._construct_connector(pos)
+            if connector is not None:
+                width = connector.pack()[0]
+                if width > available_width:
+                    raise TreeBoxError('too little space for requested decoration')
+                available_width -= width
+                if self._walker.next_sibbling_position(pos) is not None:
+                    barw = urwid.SolidFill(self._arrow_vbar_char)
+                    below = AttrMap(barw, self._arrow_vbar_att or
+                                    self._arrow_att)
+                else:
+                    below = void
+                # pile up connector and bar
+                spacer = urwid.Pile([('pack', connector), below])
+                cols.append((width, spacer))
+
+            #arrow tip
+            at = self._construct_arrow_tip(pos)
+            if at is not None:
+                width = at.pack()[0]
+                if width > available_width:
+                    raise TreeBoxError('too little space for requested decoration')
+                available_width -= width
+                at_spacer = urwid.Pile([('pack', at), void])
+                cols.append((width, at_spacer))
+
+            # bar between connector and arrow tip
+            if available_width > 0:
+                barw = urwid.SolidFill(self._arrow_hbar_char)
+                bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
+                hb_spacer = urwid.Pile([(1, bar), void])
+                cols.insert(1, (available_width, hb_spacer))
+        return cols
 
 class TreeBox(WidgetWrap):
     """A widget representing something in a nested tree display."""
