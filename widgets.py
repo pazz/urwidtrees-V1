@@ -1,5 +1,6 @@
 import urwid
 from urwid import AttrMap, Text, WidgetWrap, ListBox
+from urwid import signals
 import logging
 
 
@@ -141,22 +142,28 @@ class CollapsibleTLWMixin(object):
             self._divergent_positions.remove(pos)
         else:
             self._divergent_positions.append(pos)
+        signals.emit_signal(self, "modified")
 
     def collapse(self, pos):
+        logging.debug('collapsing %s' % str(pos))
         if self._initially_collapsed(pos):
             if pos in self._divergent_positions:
                 self._divergent_positions.remove(pos)
+                signals.emit_signal(self, "modified")
         else:
             if pos not in self._divergent_positions:
                 self._divergent_positions.append(pos)
+                signals.emit_signal(self, "modified")
 
     def expand(self, pos):
         if not self._initially_collapsed(pos):
             if pos in self._divergent_positions:
                 self._divergent_positions.remove(pos)
+                signals.emit_signal(self, "modified")
         else:
             if pos not in self._divergent_positions:
                 self._divergent_positions.append(pos)
+                signals.emit_signal(self, "modified")
 
 
 class IndentedTreeListWalker(TreeListWalker):
@@ -450,7 +457,8 @@ class TreeBox(WidgetWrap):
         focus to parent/first child and next/previous sibbling respectively.
         All other keys are passed to the underlying ListBox.
         """
-        if key in ['[', ']', '<', '>']:
+        logging.debug('got: %s' % key)
+        if key in ['[', ']', '<', '>','-','+']:
             if key == '[':
                 self.focus_parent()
             elif key == ']':
@@ -459,6 +467,12 @@ class TreeBox(WidgetWrap):
                 self.focus_prev_sibbling()
             elif key == '>':
                 self.focus_next_sibbling()
+            elif key == '-':
+                w, focuspos = self._walker.get_focus()
+                self._walker.collapse(focuspos)
+            elif key == '+':
+                w, focuspos = self._walker.get_focus()
+                self._walker.expand(focuspos)
             # This is a hack around ListBox misbehaving:
             # it seems impossible to set the focus without calling keypress as
             # otherwise the change becomes visible only after the next render()

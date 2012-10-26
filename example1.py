@@ -89,5 +89,5 @@ if __name__ == "__main__":
                       ## arrow_connector_l=u'\u2517'
                            )
 
-    T = urwid.AttrMap(TreeBox(I),'body')
+    T = urwid.AttrMap(TreeBox(CA),'body')
     urwid.MainLoop(T, palette).run()  # go
