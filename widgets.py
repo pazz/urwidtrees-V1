@@ -142,21 +142,6 @@ class IndentedTreeListWalker(TreeListWalker):
     def __getitem__(self, pos):
         return self._construct_line(pos)
 
-    def _construct_spacer(self, pos, acc):
-        """
-        build a spacer that occupies the horizontally indented space between
-        pos's parent and the root node. It will return a list of tuples to be
-        fed into a Columns widget.
-        """
-        parent = self._walker.parent_position(pos)
-        if parent is not None:
-            if self._indent > 0:
-                parent_sib = self._walker.next_sibbling_position(parent)
-                acc.insert(0, ((self._indent, urwid.SolidFill(' '))))
-            return self._construct_spacer(parent, acc)
-        else:
-            return acc
-
     def _construct_line(self, pos):
         """
         builds a list element for given position in the tree.
@@ -166,11 +151,9 @@ class IndentedTreeListWalker(TreeListWalker):
         """
         line = None
         if pos is not None:
-            original_widget = self._walker[pos]
-            cols = self._construct_spacer(pos, [])
-
-            # add the original widget for this line
-            cols.append(original_widget)
+            indent = self._walker.depth(pos) * self._indent
+            cols = [(indent, urwid.SolidFill(' ')),  # spacer
+                    self._walker[pos]]  # original widget ]
             # construct a Columns, defining all spacer as Box widgets
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
         return line

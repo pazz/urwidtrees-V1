@@ -43,6 +43,14 @@ class TreeWalker(object):
         self.focus = pos
         #self._modified()
 
+    def depth(self, pos):
+        """determine depth of node at pos"""
+        parent = self.parent_position(pos)
+        if parent is None:
+            return 0
+        else:
+            return self.depth(parent) + 1
+
 # To be overwritten by subclasses
     def parent_position(self, pos):
         return None
