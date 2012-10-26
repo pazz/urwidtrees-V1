@@ -136,6 +136,28 @@ class CollapsibleTLWMixin(object):
             return None
         return self._walker.first_child_position(pos)
 
+    def toggle_collapsed(self, pos):
+        if pos in self._divergent_positions:
+            self._divergent_positions.remove(pos)
+        else:
+            self._divergent_positions.append(pos)
+
+    def collapse(self, pos):
+        if self._initially_collapsed(pos):
+            if pos in self._divergent_positions:
+                self._divergent_positions.remove(pos)
+        else:
+            if pos not in self._divergent_positions:
+                self._divergent_positions.append(pos)
+
+    def expand(self, pos):
+        if not self._initially_collapsed(pos):
+            if pos in self._divergent_positions:
+                self._divergent_positions.remove(pos)
+        else:
+            if pos not in self._divergent_positions:
+                self._divergent_positions.append(pos)
+
 
 class IndentedTreeListWalker(TreeListWalker):
     """
