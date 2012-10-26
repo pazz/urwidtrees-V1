@@ -117,7 +117,14 @@ class CollapsibleTLWMixin(object):
     to determine which node is considered collapsed.
     """
     def __init__(self, is_collapsed=lambda pos: True):
-        self.is_collapsed = is_collapsed
+        self._initially_collapsed = is_collapsed
+        self._divergent_positions = []
+
+    def is_collapsed(self, pos):
+        collapsed = self._initially_collapsed(pos)
+        if pos in self._divergent_positions:
+            collapsed = not collapsed
+        return collapsed
 
     def last_child_position(self, pos):
         if self.is_collapsed(pos):
@@ -266,7 +273,8 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
             if connector is not None:
                 width = connector.pack()[0]
                 if width > available_width:
-                    raise TreeBoxError('too little space for requested decoration')
+                    raise TreeBoxError(
+                        'too little space for requested decoration')
                 available_width -= width
                 if self._walker.next_sibbling_position(pos) is not None:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
@@ -283,7 +291,8 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
             if at is not None:
                 width = at.pack()[0]
                 if width > available_width:
-                    raise TreeBoxError('too little space for requested decoration')
+                    raise TreeBoxError(
+                        'too little space for requested decoration')
                 available_width -= width
                 at_spacer = urwid.Pile([('pack', at), void])
                 cols.append((width, at_spacer))
@@ -342,7 +351,8 @@ class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
             if connector is not None:
                 width = connector.pack()[0]
                 if width > available_width:
-                    raise TreeBoxError('too little space for requested decoration')
+                    raise TreeBoxError(
+                        'too little space for requested decoration')
                 available_width -= width
                 if self._walker.next_sibbling_position(pos) is not None:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
@@ -359,7 +369,8 @@ class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
             if at is not None:
                 width = at.pack()[0]
                 if width > available_width:
-                    raise TreeBoxError('too little space for requested decoration')
+                    raise TreeBoxError(
+                        'too little space for requested decoration')
                 available_width -= width
                 at_spacer = urwid.Pile([('pack', at), void])
                 cols.append((width, at_spacer))
@@ -371,6 +382,7 @@ class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
                 hb_spacer = urwid.Pile([(1, bar), void])
                 cols.insert(1, (available_width, hb_spacer))
         return cols
+
 
 class TreeBox(WidgetWrap):
     """A widget representing something in a nested tree display."""
