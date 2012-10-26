@@ -108,10 +108,16 @@ class TreeListWalker(urwid.ListWalker):
     # end of Tree Walker API
 
 
-class CollapsibleTreeListWalker(TreeListWalker):
-    def __init__(self, treewalker, is_collapsed=lambda pos: True):
+class CollapsibleTLWMixin(object):
+    """
+    Mixin for TreeListWalker that allows to collapse subtrees.
+    This works by overwriting `(last|first)_child_position`, forcing them to
+    return `None` if the given position is considered collapsed. We use a
+    (given) callable `is_collapsed` that accepts positions and returns a boolean
+    to determine which node is considered collapsed.
+    """
+    def __init__(self, is_collapsed=lambda pos: True):
         self.is_collapsed = is_collapsed
-        TreeListWalker.__init__(self, treewalker)
 
     def last_child_position(self, pos):
         if self.is_collapsed(pos):
@@ -330,6 +336,12 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
         return line
 
+
+class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
+    """Arrow- decorated TLW that allows collapsing subtrees"""
+    def __init__(self, treelistwalker, is_collapsed=lambda pos: True, **kwargs):
+        ArrowTreeListWalker.__init__(self, treelistwalker, **kwargs)
+        CollapsibleTLWMixin.__init__(self, is_collapsed=is_collapsed)
 
 
 class TreeBox(WidgetWrap):
