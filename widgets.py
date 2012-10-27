@@ -274,6 +274,10 @@ class CollapsibleIndentedTreeListWalker(CollapsibleMixin, CachingMixin, Indented
 
         return line
 
+    def set_position_collapsed(self, pos, is_collapsed):
+        CollapsibleMixin.set_position_collapsed(self, pos, is_collapsed)
+        if pos in self._cache:
+            del(self._cache[pos])
 
 class ArrowTreeListWalker(IndentedTreeListWalker):
     """
