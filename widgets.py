@@ -4,6 +4,9 @@ from urwid import signals
 import logging
 
 
+NO_SPACE = 'too little space for requested decoration'
+
+
 class TreeBoxError(Exception):
     pass
 
@@ -193,6 +196,12 @@ class CollapsibleMixin(object):
         return width, widget
 
 
+class CollapsibleTreeListWalker(CollapsibleMixin, TreeListWalker):
+    def __init__(self, treelistwalker, **kwargs):
+        TreeListWalker.__init__(self, treelistwalker, **kwargs)
+        CollapsibleMixin.__init__(self, **kwargs)
+
+
 class IndentedTreeListWalker(TreeListWalker):
     """
     A TreeListWalker that indents tree nodes to the left according to their
@@ -245,14 +254,24 @@ class CollapsibleIndentedTreeListWalker(CollapsibleMixin, CachingMixin, Indented
                 cols.append(
                     (depth * self._indent, urwid.SolidFill(' '))),  # spacer
 
+            # add icon only for non-leafs
             iwidth, icon = self._construct_collapse_icon(pos)
-            if icon is not None:
-                icon_pile = urwid.Pile([('pack', icon), void])
-                cols.append((iwidth, icon_pile))
-                #overall_width += iwidth
+            spacer_width = self._icon_offset + iwidth
+
+            if self._walker.first_child_position(pos) is not None:
+                if icon is not None:
+                    icon_pile = urwid.Pile([('pack', icon), void])
+                    cols.append((iwidth, icon_pile))
+
+                    # spacer until original widget
+                    spacer_width = self._icon_offset
+            if spacer_width > 0:
+                cols.append((spacer_width, SolidFill(' ')))
+
             cols.append(self._walker[pos])  # original widget ]
             # construct a Columns, defining all spacer as Box widgets
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
+
         return line
 
 

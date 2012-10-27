@@ -8,6 +8,7 @@ from widgets import IndentedTreeListWalker
 from widgets import ArrowTreeListWalker
 from widgets import CollapsibleArrowTreeListWalker
 from widgets import CollapsibleIndentedTreeListWalker
+from widgets import CollapsibleTreeListWalker
 
 
 class FocusableText(urwid.WidgetWrap):
@@ -50,7 +51,8 @@ if __name__ == "__main__":
     logging.basicConfig(filename='example.log', level=logging.DEBUG)
     S = SimpleTreeWalker(forrest)
     I = IndentedTreeListWalker(S, indent=5)
-    CI = CollapsibleIndentedTreeListWalker(S, indent=4)
+    C = CollapsibleTreeListWalker(S)
+    CI = CollapsibleIndentedTreeListWalker(S, indent=2, icon_offset=1)
     CA = CollapsibleArrowTreeListWalker(S, indent=6, is_collapsed=lambda pos: len(pos)>3,
                                         icon_offset=1,
                                         childbar_offset=0,
@@ -97,5 +99,5 @@ if __name__ == "__main__":
                       ## arrow_connector_l=u'\u2517'
                            )
 
-    T = urwid.AttrMap(TreeBox(CA),'body')
+    T = urwid.AttrMap(TreeBox(CI),'body')
     urwid.MainLoop(T, palette).run()  # go
