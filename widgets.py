@@ -140,6 +140,9 @@ class CollapsibleMixin(object):
                  icon_expanded_char='-',
                  icon_collapsed_att=None,
                  icon_expanded_att=None,
+                 icon_frame_left_char='[',
+                 icon_frame_right_char=']',
+                 icon_frame_att=None,
                  **rest):
         self._initially_collapsed = is_collapsed
         self._divergent_positions = []
@@ -147,6 +150,9 @@ class CollapsibleMixin(object):
         self._icon_expanded_char = icon_expanded_char
         self._icon_collapsed_att = icon_collapsed_att
         self._icon_expanded_att = icon_expanded_att
+        self._icon_frame_left_char=icon_frame_left_char
+        self._icon_frame_right_char=icon_frame_right_char
+        self._icon_frame_att=icon_frame_att
 
     def is_collapsed(self, pos):
         collapsed = self._initially_collapsed(pos)
@@ -187,12 +193,25 @@ class CollapsibleMixin(object):
         width = 0
         widget = None
         char = self._icon_expanded_char
+        charatt = self._icon_expanded_att
         if self.is_collapsed(pos):
             char = self._icon_collapsed_char
+            charadd = self._icon_collapsed_att
         if char is not None:
-            char = '[' + char + ']'
+            #char = '[' + char + ']'
             width = len(char)
-            widget = Text(char)
+
+            markups = []
+            if self._icon_frame_left_char is not None:
+                markups.append((self._icon_frame_att, self._icon_frame_left_char))
+                width += len(self._icon_frame_left_char)
+
+            markups.append((charatt, char))
+
+            if self._icon_frame_right_char is not None:
+                markups.append((self._icon_frame_att, self._icon_frame_right_char))
+                width += len(self._icon_frame_right_char)
+            widget = Text(markups)
         return width, widget
 
 
@@ -448,9 +467,9 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
 
 class CollapsibleArrowTreeListWalker(CollapsibleMixin, CachingMixin, ArrowTreeListWalker):
     """Arrow- decorated TLW that allows collapsing subtrees"""
-    def __init__(self, treelistwalker, icon_offset=1, **kwargs):
+    def __init__(self, treelistwalker, icon_offset=0, indent=5, **kwargs):
         self._icon_offset = icon_offset
-        ArrowTreeListWalker.__init__(self, treelistwalker, **kwargs)
+        ArrowTreeListWalker.__init__(self, treelistwalker, indent, **kwargs)
         CollapsibleMixin.__init__(self, **kwargs)
         CachingMixin.__init__(self, self._construct_line, **kwargs)
 
