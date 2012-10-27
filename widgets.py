@@ -1,5 +1,5 @@
 import urwid
-from urwid import AttrMap, Text, WidgetWrap, ListBox
+from urwid import AttrMap, Text, WidgetWrap, ListBox, Columns, SolidFill
 from urwid import signals
 import logging
 
@@ -78,7 +78,7 @@ class TreeListWalker(urwid.ListWalker):
 
     def prev_position(self, pos):
         """returns the previous position in depth-first order"""
-        logging.debug('prev of %s' % str(pos))
+        #logging.debug('prev of %s' % str(pos))
         candidate = None
         if pos is not None:
             prevsib = self.prev_sibbling_position(pos)  # is None if first
@@ -109,7 +109,22 @@ class TreeListWalker(urwid.ListWalker):
     # end of Tree Walker API
 
 
-class CollapsibleTLWMixin(object):
+class CachingMixin(object):
+    def __init__(self, load, **kwargs):
+        self._cache = {}
+        self.load = load
+
+    def __getitem__(self, pos):
+        candidate = None
+        if pos in self._cache:
+            candidate = self._cache[pos]
+        else:
+            candidate = self.load(pos)
+            self._cache[pos] = candidate
+        return candidate
+
+
+class CollapsibleMixin(object):
     """
     Mixin for TreeListWalker that allows to collapse subtrees.
     This works by overwriting `(last|first)_child_position`, forcing them to
@@ -117,9 +132,18 @@ class CollapsibleTLWMixin(object):
     (given) callable `is_collapsed` that accepts positions and returns a boolean
     to determine which node is considered collapsed.
     """
-    def __init__(self, is_collapsed=lambda pos: True):
+    def __init__(self, is_collapsed=lambda pos: False,
+                 icon_collapsed_char='+',
+                 icon_expanded_char='-',
+                 icon_collapsed_att=None,
+                 icon_expanded_att=None,
+                 **rest):
         self._initially_collapsed = is_collapsed
         self._divergent_positions = []
+        self._icon_collapsed_char = icon_collapsed_char
+        self._icon_expanded_char = icon_expanded_char
+        self._icon_collapsed_att = icon_collapsed_att
+        self._icon_expanded_att = icon_expanded_att
 
     def is_collapsed(self, pos):
         collapsed = self._initially_collapsed(pos)
@@ -137,33 +161,36 @@ class CollapsibleTLWMixin(object):
             return None
         return self._walker.first_child_position(pos)
 
-    def toggle_collapsed(self, pos):
-        if pos in self._divergent_positions:
-            self._divergent_positions.remove(pos)
+    def set_position_collapsed(self, pos, is_collapsed):
+        if self._initially_collapsed(pos) == is_collapsed:
+            if pos in self._divergent_positions:
+                self._divergent_positions.remove(pos)
+                signals.emit_signal(self, "modified")
         else:
-            self._divergent_positions.append(pos)
-        signals.emit_signal(self, "modified")
+            if pos not in self._divergent_positions:
+                self._divergent_positions.append(pos)
+                signals.emit_signal(self, "modified")
+
+    def toggle_collapsed(self, pos):
+        self.set_position_collapsed(pos, not self.is_collapsed(pos))
 
     def collapse(self, pos):
-        logging.debug('collapsing %s' % str(pos))
-        if self._initially_collapsed(pos):
-            if pos in self._divergent_positions:
-                self._divergent_positions.remove(pos)
-                signals.emit_signal(self, "modified")
-        else:
-            if pos not in self._divergent_positions:
-                self._divergent_positions.append(pos)
-                signals.emit_signal(self, "modified")
+        self.set_position_collapsed(pos, True)
 
     def expand(self, pos):
-        if not self._initially_collapsed(pos):
-            if pos in self._divergent_positions:
-                self._divergent_positions.remove(pos)
-                signals.emit_signal(self, "modified")
-        else:
-            if pos not in self._divergent_positions:
-                self._divergent_positions.append(pos)
-                signals.emit_signal(self, "modified")
+        self.set_position_collapsed(pos, False)
+
+    def _construct_collapse_icon(self, pos):
+        width = 0
+        widget = None
+        char = self._icon_expanded_char
+        if self.is_collapsed(pos):
+            char = self._icon_collapsed_char
+        if char is not None:
+            char = '[' + char + ']'
+            width = len(char)
+            widget = Text(char)
+        return width, widget
 
 
 class IndentedTreeListWalker(TreeListWalker):
@@ -171,7 +198,7 @@ class IndentedTreeListWalker(TreeListWalker):
     A TreeListWalker that indents tree nodes to the left according to their
     depth in the tree.
     """
-    def __init__(self, treewalker, indent=2):
+    def __init__(self, treewalker, indent=2, **rest):
         self._indent = indent
         TreeListWalker.__init__(self, treewalker)
 
@@ -195,6 +222,40 @@ class IndentedTreeListWalker(TreeListWalker):
         return line
 
 
+class CollapsibleIndentedTreeListWalker(CollapsibleMixin, CachingMixin, IndentedTreeListWalker):
+    def __init__(self, treelistwalker, icon_offset=1, **kwargs):
+        self._icon_offset = icon_offset
+        IndentedTreeListWalker.__init__(self, treelistwalker, **kwargs)
+        CollapsibleMixin.__init__(self, **kwargs)
+        CachingMixin.__init__(self, self._construct_line, **kwargs)
+
+    def _construct_line(self, pos):
+        """
+        builds a list element for given position in the tree.
+        It consists of the original widget taken from the TreeWalker and some
+        decoration columns depending on the existence of parent and sibbling
+        positions. The result is a urwid.Culumns widget.
+        """
+        void = SolidFill(' ')
+        line = None
+        if pos is not None:
+            cols = []
+            depth = self._walker.depth(pos)
+            if depth > 0:
+                cols.append(
+                    (depth * self._indent, urwid.SolidFill(' '))),  # spacer
+
+            iwidth, icon = self._construct_collapse_icon(pos)
+            if icon is not None:
+                icon_pile = urwid.Pile([('pack', icon), void])
+                cols.append((iwidth, icon_pile))
+                #overall_width += iwidth
+            cols.append(self._walker[pos])  # original widget ]
+            # construct a Columns, defining all spacer as Box widgets
+            line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
+        return line
+
+
 class ArrowTreeListWalker(IndentedTreeListWalker):
     """
     TreeListWalker that decorates three, indenting nodes according to their
@@ -211,7 +272,7 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
                  arrow_att=None,
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
-                 arrow_connector_att=None):
+                 arrow_connector_att=None, **rest):
         IndentedTreeListWalker.__init__(self, walker, indent)
         self._childbar_offset = childbar_offset
         self._arrow_hbar_char = arrow_hbar_char
@@ -224,9 +285,9 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         self._arrow_tip_char = arrow_tip_char
         self._arrow_tip_att = arrow_tip_att
         self._arrow_att = arrow_att
-        self._cache = {}
 
     def __getitem__(self, pos):
+        #return self._construct_line(pos)
         candidate = None
         if pos in self._cache:
             candidate = self._cache[pos]
@@ -282,11 +343,14 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         return connector
 
     def _construct_arrow_tip(self, pos):
+        """returns arrow tip as (width, widget)"""
         arrow_tip = None
+        width = 0
         if self._arrow_tip_char:
             txt = Text(self._arrow_tip_char)
             arrow_tip = AttrMap(txt, self._arrow_tip_att or self._arrow_att)
-        return arrow_tip
+            width = len(self._arrow_tip_char)
+        return width, arrow_tip
 
     def _construct_first_indent(self, pos):
         """
@@ -316,15 +380,14 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
                 cols.append((width, spacer))
 
             #arrow tip
-            at = self._construct_arrow_tip(pos)
+            awidth, at = self._construct_arrow_tip(pos)
             if at is not None:
-                width = at.pack()[0]
-                if width > available_width:
+                if awidth > available_width:
                     raise TreeBoxError(
                         'too little space for requested decoration')
-                available_width -= width
+                available_width -= awidth
                 at_spacer = urwid.Pile([('pack', at), void])
-                cols.append((width, at_spacer))
+                cols.append((awidth, at_spacer))
 
             # bar between connector and arrow tip
             if available_width > 0:
@@ -360,57 +423,45 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         return line
 
 
-class CollapsibleArrowTreeListWalker(CollapsibleTLWMixin, ArrowTreeListWalker):
+class CollapsibleArrowTreeListWalker(CollapsibleMixin, CachingMixin, ArrowTreeListWalker):
     """Arrow- decorated TLW that allows collapsing subtrees"""
-    def __init__(self, treelistwalker, is_collapsed=lambda pos: True, **kwargs):
+    def __init__(self, treelistwalker, icon_offset=1, **kwargs):
+        self._icon_offset = icon_offset
         ArrowTreeListWalker.__init__(self, treelistwalker, **kwargs)
-        CollapsibleTLWMixin.__init__(self, is_collapsed=is_collapsed)
+        CollapsibleMixin.__init__(self, **kwargs)
+        CachingMixin.__init__(self, self._construct_line, **kwargs)
 
-    def _construct_first_indent(self, pos):
-        """
-        build spacer to occupy the first indentation level from pos to the
-        left. This is separate as it adds arrowtip and sibbling connector.
-        """
+    def _construct_arrow_tip(self, pos):
+
         cols = []
-        void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
-        available_width = self._indent
+        overall_width = self._icon_offset
 
-        if self._walker.depth(pos) > 0:
-            connector = self._construct_connector(pos)
-            if connector is not None:
-                width = connector.pack()[0]
-                if width > available_width:
-                    raise TreeBoxError(
-                        'too little space for requested decoration')
-                available_width -= width
-                if self._walker.next_sibbling_position(pos) is not None:
-                    barw = urwid.SolidFill(self._arrow_vbar_char)
-                    below = AttrMap(barw, self._arrow_vbar_att or
-                                    self._arrow_att)
-                else:
-                    below = void
-                # pile up connector and bar
-                spacer = urwid.Pile([('pack', connector), below])
-                cols.append((width, spacer))
+        if self._icon_offset > 0:
+            # how often do we repeat the hbar_char until width icon_offset is reached
+            hbar_char_count = len(self._arrow_hbar_char) / self._icon_offset
+            barw = Text(self._arrow_hbar_char * hbar_char_count)
+            bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
+            cols.insert(1, (self._icon_offset, bar))
 
-            #arrow tip
-            at = self._construct_arrow_tip(pos)
-            if at is not None:
-                width = at.pack()[0]
-                if width > available_width:
-                    raise TreeBoxError(
-                        'too little space for requested decoration')
-                available_width -= width
-                at_spacer = urwid.Pile([('pack', at), void])
-                cols.append((width, at_spacer))
+        # add icon only for non-leafs
+        if self._walker.first_child_position(pos) is not None:
+            iwidth, icon = self._construct_collapse_icon(pos)
+            if icon is not None:
+                cols.insert(0, (iwidth, icon))
+                overall_width += iwidth
 
-            # bar between connector and arrow tip
-            if available_width > 0:
-                barw = urwid.SolidFill(self._arrow_hbar_char)
-                bar = AttrMap(barw, self._arrow_hbar_att or self._arrow_att)
-                hb_spacer = urwid.Pile([(1, bar), void])
-                cols.insert(1, (available_width, hb_spacer))
-        return cols
+        # get arrow tip
+        awidth, tip = ArrowTreeListWalker._construct_arrow_tip(self, pos)
+        if tip is not None:
+            cols.append((awidth, tip))
+            overall_width += awidth
+
+        return overall_width, Columns(cols)
+
+    def set_position_collapsed(self, pos, is_collapsed):
+        CollapsibleMixin.set_position_collapsed(self, pos, is_collapsed)
+        if pos in self._cache:
+            del(self._cache[pos])
 
 
 class TreeBox(WidgetWrap):
@@ -457,8 +508,8 @@ class TreeBox(WidgetWrap):
         focus to parent/first child and next/previous sibbling respectively.
         All other keys are passed to the underlying ListBox.
         """
-        logging.debug('got: %s' % key)
-        if key in ['[', ']', '<', '>','-','+']:
+        #logging.debug('got: %s' % key)
+        if key in ['[', ']', '<', '>', '-', '+']:
             if key == '[':
                 self.focus_parent()
             elif key == ']':
