@@ -222,7 +222,7 @@ class CollapsibleMixin(object):
                 lchar = self._icon_frame_left_char
                 charlen = len(lchar)
                 leftframe = Text((self._icon_frame_att, lchar))
-                columns.append((charlen,leftframe))
+                columns.append((charlen, leftframe))
                 width += charlen
 
             # next we build out icon widget: we feed all markups to a Text,
@@ -247,10 +247,11 @@ class CollapsibleMixin(object):
                 rchar = self._icon_frame_right_char
                 charlen = len(rchar)
                 rightframe = Text((self._icon_frame_att, rchar))
-                columns.append((charlen,rightframe))
+                columns.append((charlen, rightframe))
                 width += charlen
 
-            widget = urwid.Columns(columns)#, box_columns=range(len(columns)))
+            widget = urwid.Columns(
+                columns)  # , box_columns=range(len(columns)))
         return width, widget
 
 
@@ -338,7 +339,7 @@ class CollapsibleIndentedTreeListWalker(CollapsibleMixin, CachingMixin, Indented
             del(self._cache[pos])
 
 
-class ArrowTreeListWalker(IndentedTreeListWalker):
+class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     """
     TreeListWalker that decorates three, indenting nodes according to their
     depth and drawing arrows to indicate the tree structure.
@@ -354,8 +355,9 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
                  arrow_att=None,
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
-                 arrow_connector_att=None, **rest):
+                 arrow_connector_att=None, **kwargs):
         IndentedTreeListWalker.__init__(self, walker, indent)
+        CachingMixin.__init__(self, self._construct_line, **kwargs)
         self._childbar_offset = childbar_offset
         self._arrow_hbar_char = arrow_hbar_char
         self._arrow_hbar_att = arrow_hbar_att
@@ -367,16 +369,6 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         self._arrow_tip_char = arrow_tip_char
         self._arrow_tip_att = arrow_tip_att
         self._arrow_att = arrow_att
-
-    def __getitem__(self, pos):
-        #return self._construct_line(pos)
-        candidate = None
-        if pos in self._cache:
-            candidate = self._cache[pos]
-        else:
-            candidate = self._construct_line(pos)
-            self._cache[pos] = candidate
-        return candidate
 
     def _construct_spacer(self, pos, acc):
         """
@@ -505,13 +497,12 @@ class ArrowTreeListWalker(IndentedTreeListWalker):
         return line
 
 
-class CollapsibleArrowTreeListWalker(CollapsibleMixin, CachingMixin, ArrowTreeListWalker):
+class CollapsibleArrowTreeListWalker(CollapsibleMixin, ArrowTreeListWalker):
     """Arrow- decorated TLW that allows collapsing subtrees"""
     def __init__(self, treelistwalker, icon_offset=0, indent=5, **kwargs):
         self._icon_offset = icon_offset
         ArrowTreeListWalker.__init__(self, treelistwalker, indent, **kwargs)
         CollapsibleMixin.__init__(self, **kwargs)
-        CachingMixin.__init__(self, self._construct_line, **kwargs)
 
     def _construct_arrow_tip(self, pos):
 

@@ -52,15 +52,22 @@ if __name__ == "__main__":
     S = SimpleTreeWalker(forrest)
     I = IndentedTreeListWalker(S, indent=5)
     C = CollapsibleTreeListWalker(S)
-    CI = CollapsibleIndentedTreeListWalker(S, indent=2, icon_offset=1)
+    CI = CollapsibleIndentedTreeListWalker(S, indent=2, icon_offset=1,
+                                        selectable_icons=True,
+                                        icon_focussed_att='focus',
+                                          )
     CA = CollapsibleArrowTreeListWalker(S, indent=6, is_collapsed=lambda pos: len(pos)>3,
-                                        icon_offset=1,
+                                        #icon_offset=1,
                                         childbar_offset=0,
+                                        selectable_icons=True,
+                                        icon_focussed_att='focus',
+                                        #icon_frame_left_char=None,
+                                        #icon_frame_right_char=None,
                                         #icon_expanded_char='+',
                                         #icon_collapsed_char='-',
                                         #arrow_tip_char=None,
                                        )
-    A = ArrowTreeListWalker(S, indent=3,
+    A = ArrowTreeListWalker(S, indent=4,
                             #indent_att='body',
                             #childbar_offset=1,
                             #arrow_hbar_char=u'\u2550',
@@ -99,5 +106,6 @@ if __name__ == "__main__":
                       ## arrow_connector_l=u'\u2517'
                            )
 
-    T = urwid.AttrMap(TreeBox(CA),'body')
+    T = urwid.AttrMap(TreeBox(A),'body')
+    #T = urwid.AttrMap(urwid.ListBox(CI),'body')
     urwid.MainLoop(T, palette).run()  # go
