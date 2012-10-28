@@ -216,34 +216,41 @@ class CollapsibleMixin(object):
             char = self._icon_collapsed_char
             charadd = self._icon_collapsed_att
         if char is not None:
-            width = len(char)
 
-            markups = []
+            columns = []
             if self._icon_frame_left_char is not None:
-                markups.append(
-                    (self._icon_frame_att, self._icon_frame_left_char))
-                width += len(self._icon_frame_left_char)
-
-            markups.append((charatt, char))
-
-            if self._icon_frame_right_char is not None:
-                markups.append(
-                    (self._icon_frame_att, self._icon_frame_right_char))
-                width += len(self._icon_frame_right_char)
+                lchar = self._icon_frame_left_char
+                charlen = len(lchar)
+                leftframe = Text((self._icon_frame_att, lchar))
+                columns.append((charlen,leftframe))
+                width += charlen
 
             # next we build out icon widget: we feed all markups to a Text,
             # make it selectable (to toggle collapse) if requested
+            markup = (charatt, char)
             if self._selectable_icons:
                 def keypress(key):
                     if key == 'enter':
                         self.toggle_collapsed(pos)
                         key = None
                     return key
-                widget = SelectableIcon(markups, keypress)
+                widget = SelectableIcon(markup, keypress)
                 widget = AttrMap(
                     widget, None, focus_map=self._icon_focussed_att)
             else:
-                widget = Text(markups)
+                widget = Text(markup)
+            charlen = len(char)
+            columns.append((charlen, widget))
+            width += charlen
+
+            if self._icon_frame_right_char is not None:
+                rchar = self._icon_frame_right_char
+                charlen = len(rchar)
+                rightframe = Text((self._icon_frame_att, rchar))
+                columns.append((charlen,rightframe))
+                width += charlen
+
+            widget = urwid.Columns(columns)#, box_columns=range(len(columns)))
         return width, widget
 
 
