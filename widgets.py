@@ -127,6 +127,20 @@ class CachingMixin(object):
         return candidate
 
 
+class SelectableIcon(urwid.WidgetWrap):
+    def __init__(self, txt, handle_keypress=None):
+        self._handle_keypress = handle_keypress
+        urwid.WidgetWrap.__init__(self, Text(txt))
+
+    def selectable(self):
+        return True
+
+    def keypress(self, size, key):
+        if self._handle_keypress:
+            key = self._handle_keypress(key)
+        return key
+
+
 class CollapsibleMixin(object):
     """
     Mixin for TreeListWalker that allows to collapse subtrees.
@@ -143,6 +157,8 @@ class CollapsibleMixin(object):
                  icon_frame_left_char='[',
                  icon_frame_right_char=']',
                  icon_frame_att=None,
+                 selectable_icons=False,
+                 icon_focussed_att=None,
                  **rest):
         self._initially_collapsed = is_collapsed
         self._divergent_positions = []
@@ -150,9 +166,11 @@ class CollapsibleMixin(object):
         self._icon_expanded_char = icon_expanded_char
         self._icon_collapsed_att = icon_collapsed_att
         self._icon_expanded_att = icon_expanded_att
-        self._icon_frame_left_char=icon_frame_left_char
-        self._icon_frame_right_char=icon_frame_right_char
-        self._icon_frame_att=icon_frame_att
+        self._icon_frame_left_char = icon_frame_left_char
+        self._icon_frame_right_char = icon_frame_right_char
+        self._icon_frame_att = icon_frame_att
+        self._selectable_icons = selectable_icons
+        self._icon_focussed_att = icon_focussed_att
 
     def is_collapsed(self, pos):
         collapsed = self._initially_collapsed(pos)
@@ -198,20 +216,34 @@ class CollapsibleMixin(object):
             char = self._icon_collapsed_char
             charadd = self._icon_collapsed_att
         if char is not None:
-            #char = '[' + char + ']'
             width = len(char)
 
             markups = []
             if self._icon_frame_left_char is not None:
-                markups.append((self._icon_frame_att, self._icon_frame_left_char))
+                markups.append(
+                    (self._icon_frame_att, self._icon_frame_left_char))
                 width += len(self._icon_frame_left_char)
 
             markups.append((charatt, char))
 
             if self._icon_frame_right_char is not None:
-                markups.append((self._icon_frame_att, self._icon_frame_right_char))
+                markups.append(
+                    (self._icon_frame_att, self._icon_frame_right_char))
                 width += len(self._icon_frame_right_char)
-            widget = Text(markups)
+
+            # next we build out icon widget: we feed all markups to a Text,
+            # make it selectable (to toggle collapse) if requested
+            if self._selectable_icons:
+                def keypress(key):
+                    if key == 'enter':
+                        self.toggle_collapsed(pos)
+                        key = None
+                    return key
+                widget = SelectableIcon(markups, keypress)
+                widget = AttrMap(
+                    widget, None, focus_map=self._icon_focussed_att)
+            else:
+                widget = Text(markups)
         return width, widget
 
 
@@ -297,6 +329,7 @@ class CollapsibleIndentedTreeListWalker(CollapsibleMixin, CachingMixin, Indented
         CollapsibleMixin.set_position_collapsed(self, pos, is_collapsed)
         if pos in self._cache:
             del(self._cache[pos])
+
 
 class ArrowTreeListWalker(IndentedTreeListWalker):
     """
