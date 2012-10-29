@@ -581,25 +581,25 @@ class TreeBox(WidgetWrap):
         focus to parent/first child and next/previous sibbling respectively.
         All other keys are passed to the underlying ListBox.
         """
-        #logging.debug('got: %s' % key)
-        if key in ['[', ']', '<', '>', '-', '+']:
-            if key == '[':
+        key = self._outer_list.keypress(size, key)
+        logging.debug('got: %s' % key)
+        if key in ['left', 'right', '[',']','-','+']:
+            if key == 'left':
                 self.focus_parent()
-            elif key == ']':
+            elif key == 'right':
                 self.focus_first_child()
-            elif key == '<':
+            elif key == '[':
                 self.focus_prev_sibbling()
-            elif key == '>':
+            elif key == ']':
                 self.focus_next_sibbling()
-            elif key == '-':
-                w, focuspos = self._walker.get_focus()
-                self._walker.collapse(focuspos)
-            elif key == '+':
-                w, focuspos = self._walker.get_focus()
-                self._walker.expand(focuspos)
+            if isinstance(self._walker, CollapsibleMixin):
+                if key == '-':
+                    w, focuspos = self._walker.get_focus()
+                    self._walker.collapse(focuspos)
+                elif key == '+':
+                    w, focuspos = self._walker.get_focus()
+                    self._walker.expand(focuspos)
             # This is a hack around ListBox misbehaving:
             # it seems impossible to set the focus without calling keypress as
             # otherwise the change becomes visible only after the next render()
             return self._outer_list.keypress(size, None)
-        else:
-            return self._outer_list.keypress(size, key)
