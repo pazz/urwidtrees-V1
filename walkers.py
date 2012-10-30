@@ -92,10 +92,10 @@ class SimpleTreeWalker(TreeWalker):
     """
     Walks on a given fixed acyclic structure.
     The structure needs to be a list of nodes; every node is a tuple `(widget,
-    children)`, where widget is a urwir.Widget to be displayed at that position
-    and children is either None or a list of nodes.
+    children)`, where widget is a urwid.Widget to be displayed at that position
+    and children is either `None` or a list of nodes.
 
-    positions are lists of ints determining a path from toplevel node.
+    Positions are lists of ints determining a path from toplevel node.
     """
     def __init__(self, treelist):
         self.focus = (0,)
@@ -125,6 +125,10 @@ class SimpleTreeWalker(TreeWalker):
 
     def __getitem__(self, pos):
         return self._get_node(self._treelist, pos)
+
+    def depth(self, pos):
+        """more performant implementation due to specific structure of pos"""
+        return len(pos) -1
 
     def parent_position(self, pos):
         parent = None
