@@ -1,5 +1,3 @@
-from urwid import signals
-#import logging
 
 
 class TreeWalker(object):
@@ -16,13 +14,11 @@ class TreeWalker(object):
 
      that compute the next position in the respective direction. Also, they
      need to implement method `__getitem__` that returns a widget for a given position.
-    """
-    __metaclass__ = signals.MetaSignals
-    signals = ["modified"]
-    focus = None
 
-    def _modified(self):
-        signals.emit_signal(self, "modified")
+     The type of objects used as positions may vary in subclasses and is deliberately
+     unspecified for the base class.
+    """
+    focus = None
 
     def _get(self, pos):
         """loads widget at given position; handling invalid arguments"""
@@ -41,7 +37,6 @@ class TreeWalker(object):
     def set_focus(self, pos):
         """set focus to widget at given pos."""
         self.focus = pos
-        #self._modified()
 
     def depth(self, pos):
         """determine depth of node at pos"""
@@ -51,22 +46,31 @@ class TreeWalker(object):
         else:
             return self.depth(parent) + 1
 
-# To be overwritten by subclasses
+    # To be overwritten by subclasses
     def parent_position(self, pos):
+        """returns the position of the parent node of the node at `pos`
+        or `None` if none exists."""
         return None
 
     def first_child_position(self, pos):
+        """returns the position of the first child of the node at `pos`,
+        or `None` if none exists."""
         return None
 
     def last_child_position(self, pos):
+        """returns the position of the last child of the node at `pos`,
+        or `None` if none exists."""
         return None
 
     def next_sibbling_position(self, pos):
+        """returns the position of the next sibbling of the node at `pos`,
+        or `None` if none exists."""
         return None
 
     def prev_sibbling_position(self, pos):
+        """returns the position of the previous sibbling of the node at `pos`,
+        or `None` if none exists."""
         return None
-# end of TreeWalker
 
 
 class LazyTreeWalker(TreeWalker):
@@ -95,13 +99,14 @@ class SimpleTreeWalker(TreeWalker):
     children)`, where widget is a urwid.Widget to be displayed at that position
     and children is either `None` or a list of nodes.
 
-    Positions are lists of ints determining a path from toplevel node.
+    Positions are lists of integers determining a path from toplevel node.
     """
     def __init__(self, treelist):
         self.focus = (0,)
         self._treelist = treelist
         TreeWalker.__init__(self)
 
+    # a few local helper methods
     def _get_subtree(self, treelist, path):
         """recursive helper to look up node-tuple for `path` in `treelist`"""
         subtree = None
@@ -123,12 +128,16 @@ class SimpleTreeWalker(TreeWalker):
                 node = subtree[0]
         return node
 
+    def _confirm_pos(self, pos):
+        """look up widget for pos and default to None"""
+        candidate = None
+        if self._get_node(self._treelist, pos) is not None:
+            candidate = pos
+        return candidate
+
+    # TreeWalker API
     def __getitem__(self, pos):
         return self._get_node(self._treelist, pos)
-
-    def depth(self, pos):
-        """more performant implementation due to specific structure of pos"""
-        return len(pos) -1
 
     def parent_position(self, pos):
         parent = None
@@ -136,12 +145,6 @@ class SimpleTreeWalker(TreeWalker):
             if len(pos) > 1:
                 parent = pos[:-1]
         return parent
-
-    def _confirm_pos(self, pos):
-        candidate = None
-        if self._get_node(self._treelist, pos) is not None:
-            candidate = pos
-        return candidate
 
     def first_child_position(self, pos):
         return self._confirm_pos(pos + (0,))
@@ -159,3 +162,8 @@ class SimpleTreeWalker(TreeWalker):
 
     def prev_sibbling_position(self, pos):
         return pos[:-1] + (pos[-1] - 1,) if (pos[-1] > 0) else None
+
+    # optimizations
+    def depth(self, pos):
+        """more performant implementation due to specific structure of pos"""
+        return len(pos) - 1
