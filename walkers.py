@@ -20,6 +20,7 @@ class TreeWalker(object):
     """
     focus = None
 
+    # local helper
     def _get(self, pos):
         """loads widget at given position; handling invalid arguments"""
         res = None, None
@@ -30,6 +31,21 @@ class TreeWalker(object):
                 pass
         return res
 
+    def _last_in_direction(self, starting_pos, direction):
+        """
+        recursively move in the tree in given direction
+        and return the last position.
+
+        :param starting_pos: position to start in
+        :param direction: callable that transforms a position into a position.
+        """
+        nex_pos = direction(starting_pos)
+        if next_pos is None:
+            return starting_pos
+        else:
+            return self._last_in_direction(nextpos, direction)
+
+    # get/set focus in walk
     def get_focus(self):
         """return focussed widget."""
         return self._get(self.focus)
@@ -38,6 +54,8 @@ class TreeWalker(object):
         """set focus to widget at given pos."""
         self.focus = pos
 
+    # generic helpers that recursively call re-defined local moves in
+    # subclasses
     def depth(self, pos):
         """determine depth of node at pos"""
         parent = self.parent_position(pos)
@@ -45,6 +63,26 @@ class TreeWalker(object):
             return 0
         else:
             return self.depth(parent) + 1
+
+    def first_ancestor(self, pos):
+        """
+        position of pos's ancestor with depth 0.  usually, this should return
+        the root node, but a Walker might represent a Forrest - have multiple
+        nodes without parent.
+        """
+        return self._last_in_direction(pos, self.parent_position)
+
+    def last_decendant(self, pos):
+        """position of last (in DFO) decendant of pos"""
+        return self._last_in_direction(pos, self.last_child_position)
+
+    def last_sibbling_position(self, pos):
+        """position of last sibbling of pos"""
+        return self._last_in_direction(pos, self.next_sibbling_position)
+
+    def first_sibbling_position(self, pos):
+        """position of first sibbling of pos"""
+        return self._last_in_direction(pos, self.prev_sibbling_position)
 
     # To be overwritten by subclasses
     def parent_position(self, pos):
