@@ -17,8 +17,9 @@ class TreeListWalker(urwid.ListWalker):
     Objects of this type wrap a given TreeWalker and turn it into
     a ListWalker compatible with ListBox.
     """
-    def __init__(self, treewalker):
+    def __init__(self, treewalker, focus=None, **kwargs):
         self._walker = treewalker
+        self._focus = focus or treewalker.root
 
     def __getitem__(self, pos):
         return self._walker[pos]
@@ -35,11 +36,10 @@ class TreeListWalker(urwid.ListWalker):
 
     # List Walker API
     def get_focus(self):
-        widget, position = self._walker.get_focus()
-        return self[position], position
+        return self._get(self._focus)
 
     def set_focus(self, pos):
-        return self._walker.set_focus(pos)
+        self._focus = pos
 
     def get_next(self, pos):
         return self._get(self.next_position(pos))
@@ -266,9 +266,9 @@ class IndentedTreeListWalker(TreeListWalker):
     A TreeListWalker that indents tree nodes to the left according to their
     depth in the tree.
     """
-    def __init__(self, treewalker, indent=2, **rest):
+    def __init__(self, treewalker, indent=2, **kwargs):
         self._indent = indent
-        TreeListWalker.__init__(self, treewalker)
+        TreeListWalker.__init__(self, treewalker, **kwargs)
 
     def __getitem__(self, pos):
         return self._construct_line(pos)
@@ -356,7 +356,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
                  arrow_connector_att=None, **kwargs):
-        IndentedTreeListWalker.__init__(self, walker, indent)
+        IndentedTreeListWalker.__init__(self, walker, indent, **kwargs)
         CachingMixin.__init__(self, self._construct_line, **kwargs)
         self._childbar_offset = childbar_offset
         self._arrow_hbar_char = arrow_hbar_char
@@ -583,7 +583,7 @@ class TreeBox(WidgetWrap):
         """
         key = self._outer_list.keypress(size, key)
         logging.debug('got: %s' % key)
-        if key in ['left', 'right', '[',']','-','+']:
+        if key in ['left', 'right', '[', ']', '-', '+']:
             if key == 'left':
                 self.focus_parent()
             elif key == 'right':

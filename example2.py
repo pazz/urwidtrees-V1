@@ -22,8 +22,8 @@ class FocusableText(urwid.WidgetWrap):
 
 
 class DirectoryWalker(LazyTreeWalker):
-    def __init__(self, pwd):
-        self.focus = pwd
+    root = '/'
+    def __init__(self):
         self.dirsep = getattr(os.path, 'sep', '/')  # separator for this os
         LazyTreeWalker.__init__(self, self.load_widget)
 
@@ -96,8 +96,9 @@ palette = [
 
 if __name__ == "__main__":
     cwd = os.getcwd()  # get current working directory
-    D = DirectoryWalker(cwd)  # get a Walker with cwd as initial focus
-    A = CollapsibleArrowTreeListWalker(D, is_collapsed=lambda pos: len(pos)>2, arrow_tip_char=None,
+    D = DirectoryWalker()  # get a Walker with cwd as initial focus
+    A = CollapsibleArrowTreeListWalker(D, focus=cwd,
+                                       is_collapsed=lambda pos: len(pos) > 2, arrow_tip_char=None,
                                        icon_frame_left_char=None,
                                        icon_frame_right_char=None,
                                        icon_collapsed_char=u'\u25B6',

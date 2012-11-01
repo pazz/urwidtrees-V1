@@ -18,7 +18,7 @@ class TreeWalker(object):
      The type of objects used as positions may vary in subclasses and is deliberately
      unspecified for the base class.
     """
-    focus = None
+    root = None
 
     # local helper
     def _get(self, pos):
@@ -45,17 +45,6 @@ class TreeWalker(object):
         else:
             return self._last_in_direction(nextpos, direction)
 
-    # get/set focus in walk
-    def get_focus(self):
-        """return focussed widget."""
-        return self._get(self.focus)
-
-    def set_focus(self, pos):
-        """set focus to widget at given pos."""
-        self.focus = pos
-
-    # generic helpers that recursively call re-defined local moves in
-    # subclasses
     def depth(self, pos):
         """determine depth of node at pos"""
         parent = self.parent_position(pos)
@@ -139,10 +128,10 @@ class SimpleTreeWalker(TreeWalker):
 
     Positions are lists of integers determining a path from toplevel node.
     """
-    def __init__(self, treelist):
-        self.focus = (0,)
+    def __init__(self, treelist, **kwargs):
         self._treelist = treelist
-        TreeWalker.__init__(self)
+        self.root = (0,) if treelist else None
+        TreeWalker.__init__(self, **kwargs)
 
     # a few local helper methods
     def _get_subtree(self, treelist, path):
