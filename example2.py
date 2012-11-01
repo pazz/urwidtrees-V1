@@ -6,6 +6,7 @@ from walkers import LazyTreeWalker
 from widgets import TreeBox
 from widgets import IndentedTreeListWalker
 from widgets import CollapsibleArrowTreeListWalker
+import logging
 
 
 class FocusableText(urwid.WidgetWrap):
@@ -28,6 +29,7 @@ class DirectoryWalker(LazyTreeWalker):
         LazyTreeWalker.__init__(self, self.load_widget)
 
     def load_widget(self, pos):
+        logging.debug("loading widget at: %s" % pos)
         return FocusableText(pos)
 
     def _list_dir(self, path):
@@ -95,6 +97,7 @@ palette = [
 
 
 if __name__ == "__main__":
+    logging.basicConfig(filename='example.log', level=logging.DEBUG)
     cwd = os.getcwd()  # get current working directory
     D = DirectoryWalker()  # get a Walker with cwd as initial focus
     A = CollapsibleArrowTreeListWalker(D, focus=cwd,

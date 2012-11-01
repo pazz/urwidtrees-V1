@@ -1,5 +1,3 @@
-
-
 class TreeWalker(object):
     """
     Content provider for tree structures. Base class for a structured walk
@@ -39,11 +37,11 @@ class TreeWalker(object):
         :param starting_pos: position to start in
         :param direction: callable that transforms a position into a position.
         """
-        nex_pos = direction(starting_pos)
+        next_pos = direction(starting_pos)
         if next_pos is None:
             return starting_pos
         else:
-            return self._last_in_direction(nextpos, direction)
+            return self._last_in_direction(next_pos, direction)
 
     def depth(self, pos):
         """determine depth of node at pos"""
