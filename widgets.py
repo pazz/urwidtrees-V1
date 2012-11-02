@@ -389,7 +389,7 @@ class IndentedTreeListWalker(TreeListWalker):
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
         return line
 
-
+# TODO: broken!
 class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, IndentedTreeListWalker):
     def __init__(self, treelistwalker, icon_offset=1, **kwargs):
         self._icon_offset = icon_offset
@@ -449,7 +449,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     TreeListWalker that decorates three, indenting nodes according to their
     depth and drawing arrows to indicate the tree structure.
     """
-    def __init__(self, walker, indent=2,
+    def __init__(self, walker, indent=3,
                  childbar_offset=0,
                  arrow_hbar_char=u'\u2500',
                  arrow_hbar_att=None,
