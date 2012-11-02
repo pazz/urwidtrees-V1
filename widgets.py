@@ -15,7 +15,6 @@ class TreeListWalker(urwid.ListWalker):
         self._focus = focus or treewalker.root
 
     def __getitem__(self, pos):
-        logging.debug("TreeListWalker getitem at: %s" % pos)
         return self._walker[pos]
 
     def _get(self, pos):
@@ -75,7 +74,6 @@ class TreeListWalker(urwid.ListWalker):
 
     def prev_position(self, pos):
         """returns the previous position in depth-first order"""
-        #logging.debug('prev of %s' % str(pos))
         candidate = None
         if pos is not None:
             prevsib = self.prev_sibbling_position(pos)  # is None if first
@@ -153,7 +151,6 @@ class TreeBox(WidgetWrap):
         All other keys are passed to the underlying ListBox.
         """
         key = self._outer_list.keypress(size, key)
-        logging.debug('got: %s' % key)
         if key in ['left', 'right', '[', ']', '-', '+']:
             if key == 'left':
                 self.focus_parent()
@@ -185,9 +182,13 @@ class TreeDecorationError(Exception):
 
 class CachingMixin(object):
     """Mixin that allows TreeListWalkers to cache constructed line-widgets"""
-    def __init__(self, load, **kwargs):
+    def __init__(self, load, nextpos=None, prevpos=None, **kwargs):
         self._cache = {}
         self.load = load
+        self._next_cache = {}
+        self._next_position = nextpos
+        self._prev_cache = {}
+        self._prev_position = prevpos
 
     def __getitem__(self, pos):
         candidate = None
@@ -196,6 +197,20 @@ class CachingMixin(object):
         else:
             candidate = self.load(pos)
             self._cache[pos] = candidate
+        return candidate
+
+    def next_position(self, pos):
+        candidate = self._next_cache.get(pos, None)
+        if candidate is None and self._next_position is not None:
+            candidate = self._next_position(self, pos)
+            self._next_cache[pos] = candidate
+        return candidate
+
+    def prev_position(self, pos):
+        candidate = self._prev_cache.get(pos, None)
+        if candidate is None and self._prev_position is not None:
+            candidate = self._prev_position(self, pos)
+            self._prev_cache[pos] = candidate
         return candidate
 
 
@@ -419,9 +434,14 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         return line
 
     def set_position_collapsed(self, pos, is_collapsed):
+        """needs to be overwritten as CollapseMixin doens't empty the caches"""
         CollapseMixin.set_position_collapsed(self, pos, is_collapsed)
         if pos in self._cache:
             del(self._cache[pos])
+        if pos in self._next_cache:
+            del(self._next_cache[pos])
+        if pos in self._prev_cache:
+            del(self._prev_cache[pos])
 
 
 class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
@@ -442,7 +462,10 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                  arrow_connector_lchar=u'\u2514',
                  arrow_connector_att=None, **kwargs):
         IndentedTreeListWalker.__init__(self, walker, indent, **kwargs)
-        CachingMixin.__init__(self, self._construct_line, **kwargs)
+        CachingMixin.__init__(self, self._construct_line,
+                              nextpos=IndentedTreeListWalker.next_position,
+                              prevpos=IndentedTreeListWalker.prev_position,
+                              **kwargs)
         self._childbar_offset = childbar_offset
         self._arrow_hbar_char = arrow_hbar_char
         self._arrow_hbar_att = arrow_hbar_att
@@ -615,6 +638,11 @@ class CollapsibleArrowTreeListWalker(CollapseIconMixin, ArrowTreeListWalker):
         return overall_width, Columns(cols)
 
     def set_position_collapsed(self, pos, is_collapsed):
+        """needs to be overwritten as CollapseMixin doens't empty the caches"""
         CollapseMixin.set_position_collapsed(self, pos, is_collapsed)
         if pos in self._cache:
             del(self._cache[pos])
+        if pos in self._next_cache:
+            del(self._next_cache[pos])
+        if pos in self._prev_cache:
+            del(self._prev_cache[pos])
