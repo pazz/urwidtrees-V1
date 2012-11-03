@@ -212,9 +212,9 @@ class CachingMixin(object):
         self._cache = {}
         self.load = load
         self._next_cache = {}
-        self._next_position = nextpos
+        self._next_position = nextpos or TreeListWalker.next_position
         self._prev_cache = {}
-        self._prev_position = prevpos
+        self._prev_position = prevpos or TreeListWalker.prev_position
 
     def __getitem__(self, pos):
         candidate = None
@@ -422,13 +422,13 @@ class IndentedTreeListWalker(TreeListWalker):
             line = urwid.Columns(cols, box_columns=range(len(cols))[:-1])
         return line
 
-# TODO: broken!
+
 class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, IndentedTreeListWalker):
     """
     Indent collapsible tree nodes according to their depth in the tree and
     display icons indicating collapse-status in the gaps.
     """
-    def __init__(self, treelistwalker, icon_offset=1, **kwargs):
+    def __init__(self, treelistwalker, icon_offset=1, indent=4, **kwargs):
         """
         :param treewalker: tree of widgets to be displayed
         :type treewalker: TreeWalker
@@ -438,7 +438,7 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         :type icon_offset: int
         """
         self._icon_offset = icon_offset
-        IndentedTreeListWalker.__init__(self, treelistwalker, indent=4, **kwargs)
+        IndentedTreeListWalker.__init__(self, treelistwalker, indent=indent, **kwargs)
         CollapseIconMixin.__init__(self, **kwargs)
         CachingMixin.__init__(self, self._construct_line, **kwargs)
 
@@ -454,23 +454,34 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         if pos is not None:
             cols = []
             depth = self._walker.depth(pos)
+
+            # add spacer filling all but the last indent
             if depth > 0:
                 cols.append(
                     (depth * self._indent, urwid.SolidFill(' '))),  # spacer
 
-            # add icon only for non-leafs
+            # construct last indent
             iwidth, icon = self._construct_collapse_icon(pos)
-            spacer_width = self._icon_offset + iwidth
+            available_space = self._indent
+            firstindent_width = self._icon_offset + iwidth
 
+            # stop if indent is too small for this decoration
+            if firstindent_width > available_space:
+                raise TreeDecorationError(NO_SPACE_MSG)
+
+            # add icon only for non-leafs
             if self._walker.first_child_position(pos) is not None:
                 if icon is not None:
+                    # space to the left
+                    cols.append((available_space - firstindent_width, SolidFill(' ')))
+                    # icon
                     icon_pile = urwid.Pile([('pack', icon), void])
                     cols.append((iwidth, icon_pile))
-
                     # spacer until original widget
-                    spacer_width = self._icon_offset
-            if spacer_width > 0:
-                cols.append((spacer_width, SolidFill(' ')))
+                    available_space = self._icon_offset
+                cols.append((available_space, SolidFill(' ')))
+            else:  # otherwise just add another spacer
+                cols.append((self._indent, SolidFill(' ')))
 
             cols.append(self._walker[pos])  # original widget ]
             # construct a Columns, defining all spacer as Box widgets
@@ -495,7 +506,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     the gaps to draw arrows indicate the tree structure.
     """
     def __init__(self, walker,
-                 indent=12,
+                 indent=3,
                  childbar_offset=0,
                  arrow_hbar_char=u'\u2500',
                  arrow_hbar_att=None,
