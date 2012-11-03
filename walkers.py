@@ -177,9 +177,10 @@ class SimpleTreeWalker(TreeWalker):
     def last_child_position(self, pos):
         candidate = None
         subtree = self._get_subtree(self._treelist, pos)
-        children = subtree[1]
-        if children is not None:
-            candidate = pos + (len(children) - 1,)
+        if subtree is not None:
+            children = subtree[1]
+            if children is not None:
+                candidate = pos + (len(children) - 1,)
         return candidate
 
     def next_sibbling_position(self, pos):
