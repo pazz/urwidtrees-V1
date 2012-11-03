@@ -98,7 +98,7 @@ class TreeWalker(object):
         return None
 
 
-class LazyTreeWalker(TreeWalker):
+class CachingTreeWalker(TreeWalker):
     """TreeWalker that caches its contained widgets"""
     def __init__(self, load_widget):
         """
