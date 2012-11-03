@@ -4,6 +4,10 @@ from urwid import signals
 import logging
 
 
+class TreeDecorationError(Exception):
+    pass
+
+
 class TreeListWalker(urwid.ListWalker):
     """
     Base class for Decoration adapters:
@@ -11,6 +15,13 @@ class TreeListWalker(urwid.ListWalker):
     a ListWalker compatible with ListBox.
     """
     def __init__(self, treewalker, focus=None, **kwargs):
+        """
+        :param treewalker: the tree of widgets to be displayed
+        :type treewalker: TreeWalker
+        :param focus: position of node to be focussed initially.
+            This has to be a valid position in the TreeWalker.
+            It defaults to the value of `treewalker.root`.
+        """
         self._walker = treewalker
         self._focus = focus or treewalker.root
 
@@ -27,19 +38,7 @@ class TreeListWalker(urwid.ListWalker):
                 pass
         return res
 
-    # List Walker API
-    def get_focus(self):
-        return self._get(self._focus)
-
-    def set_focus(self, pos):
-        self._focus = pos
-
-    def get_next(self, pos):
-        return self._get(self.next_position(pos))
-
-    def get_prev(self, pos):
-        return self._get(self.prev_position(pos))
-
+    # generic helper
     def _next_of_kin(self, pos):
         """
         Looks up the next sibbling of the closest ancestor with next sibblings.
@@ -60,6 +59,20 @@ class TreeListWalker(urwid.ListWalker):
         if last_child is not None:
             candidate = self._last_decendant_position(last_child)
         return candidate
+
+
+    # List Walker API.
+    def get_focus(self):
+        return self._get(self._focus)
+
+    def set_focus(self, pos):
+        self._focus = pos
+
+    def get_next(self, pos):
+        return self._get(self.next_position(pos))
+
+    def get_prev(self, pos):
+        return self._get(self.prev_position(pos))
 
     def next_position(self, pos):
         """returns the next position in depth-first order"""
@@ -86,7 +99,11 @@ class TreeListWalker(urwid.ListWalker):
         return candidate
     # end of List Walker API
 
-    # Tree Walker API
+    # Tree Walker API.
+    # We repeat these here to be able overwrite them locally without changing
+    # the treewalker we work on. `next/prev_position` use the TreeWalker
+    # methods proxied by self and thus decorative tree operations such as
+    # collapses are done completely in the TreeListWalker.
     def prev_sibbling_position(self, pos):
         return self._walker.prev_sibbling_position(pos)
 
@@ -105,51 +122,35 @@ class TreeListWalker(urwid.ListWalker):
 
 
 class TreeBox(WidgetWrap):
-    """A widget representing something in a nested tree display.
-    This is essentially a ListBox with the ability to move the focus
-    based on directions in the Tree."""
+    """
+    A widget representing something in a nested tree display.
+    This is essentially a ListBox with the ability to move the focus based on
+    directions in the Tree.
+
+    TreeBox interprets `left/right` as well as page `up/down` to move the focus
+    to parent/first child and next/previous sibbling respectively. All other
+    keys are passed to the underlying ListBox.
+    """
     _selectable = True
 
     def __init__(self, walker, **kwargs):
+        """
+        :param walker: tree of widgets to be displayed.
+            In case we are given a raw `TreeWalker`, it will be used though
+            `TreeListWalker` which means no decoration.
+        :type walker: TreeWalker or TreeListWalker
+        """
         if not isinstance(walker, TreeListWalker):
             walker = TreeListWalker(walker)
         self._walker = walker
         self._outer_list = ListBox(walker)
         self.__super.__init__(self._outer_list)
 
+    # Widget API
     def get_focus(self):
         return self._outer_list.get_focus()
 
-    def focus_parent(self):
-        w, focuspos = self._walker.get_focus()
-        parent = self._walker.parent_position(focuspos)
-        if parent is not None:
-            self._outer_list.set_focus(parent)
-
-    def focus_first_child(self):
-        w, focuspos = self._walker.get_focus()
-        child = self._walker.first_child_position(focuspos)
-        if child is not None:
-            self._outer_list.set_focus(child)
-
-    def focus_next_sibbling(self):
-        w, focuspos = self._walker.get_focus()
-        sib = self._walker.next_sibbling_position(focuspos)
-        if sib is not None:
-            self._outer_list.set_focus(sib)
-
-    def focus_prev_sibbling(self):
-        w, focuspos = self._walker.get_focus()
-        sib = self._walker.prev_sibbling_position(focuspos)
-        if sib is not None:
-            self._outer_list.set_focus(sib)
-
     def keypress(self, size, key):
-        """
-        TreeBox interprets `left/right` as well as page `up/down` to move the
-        focus to parent/first child and next/previous sibbling respectively.
-        All other keys are passed to the underlying ListBox.
-        """
         key = self._outer_list.keypress(size, key)
         if key in ['left', 'right', '[', ']', '-', '+']:
             if key == 'left':
@@ -174,13 +175,36 @@ class TreeBox(WidgetWrap):
         else:
             return self._outer_list.keypress(size, key)
 
+    # Tree based focus movement
+    def focus_parent(self):
+        w, focuspos = self._walker.get_focus()
+        parent = self._walker.parent_position(focuspos)
+        if parent is not None:
+            self._outer_list.set_focus(parent)
+
+    def focus_first_child(self):
+        w, focuspos = self._walker.get_focus()
+        child = self._walker.first_child_position(focuspos)
+        if child is not None:
+            self._outer_list.set_focus(child)
+
+    def focus_next_sibbling(self):
+        w, focuspos = self._walker.get_focus()
+        sib = self._walker.next_sibbling_position(focuspos)
+        if sib is not None:
+            self._outer_list.set_focus(sib)
+
+    def focus_prev_sibbling(self):
+        w, focuspos = self._walker.get_focus()
+        sib = self._walker.prev_sibbling_position(focuspos)
+        if sib is not None:
+            self._outer_list.set_focus(sib)
+
+
 
 NO_SPACE_MSG = 'too little space for requested decoration'
 
-
-class TreeDecorationError(Exception):
-    pass
-
+# Mixins for TreeListWalkers
 
 class CachingMixin(object):
     """Mixin that allows TreeListWalkers to cache constructed line-widgets"""
@@ -282,7 +306,8 @@ class CollapseMixin(object):
 
 class CollapseIconMixin(CollapseMixin):
     """
-    Mixin for TreeListWalker that allows to allows to collapse subtrees.
+    Mixin for TreeListWalker that allows to allows to collapse subtrees
+    and use an indicator icon in line decorations.
     This Mixin adds the ability to construct collapse-icon for a
     position, indicating its collapse status to :class:`CollapseMixin`.
     """
@@ -356,19 +381,25 @@ class CollapseIconMixin(CollapseMixin):
                 columns)  # , box_columns=range(len(columns)))
         return width, widget
 
+# Next we implement some Tree decorations by subclassing TreeListWalker using
+# various Mixins..
 
 class CollapsibleTreeListWalker(CollapseMixin, TreeListWalker):
+    """Undecorated TreeListWalker that allows to collapse subtrees"""
     def __init__(self, treelistwalker, **kwargs):
         TreeListWalker.__init__(self, treelistwalker, **kwargs)
         CollapseMixin.__init__(self, **kwargs)
 
 
 class IndentedTreeListWalker(TreeListWalker):
-    """
-    A TreeListWalker that indents tree nodes to the left according to their
-    depth in the tree.
-    """
+    """Indent tree nodes according to their depth in the tree"""
     def __init__(self, treewalker, indent=2, **kwargs):
+        """
+        :param treewalker: tree of widgets to be displayed
+        :type treewalker: TreeWalker
+        :param indent: indentation width
+        :type indent: int
+        """
         self._indent = indent
         TreeListWalker.__init__(self, treewalker, **kwargs)
 
@@ -393,9 +424,21 @@ class IndentedTreeListWalker(TreeListWalker):
 
 # TODO: broken!
 class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, IndentedTreeListWalker):
+    """
+    Indent collapsible tree nodes according to their depth in the tree and
+    display icons indicating collapse-status in the gaps.
+    """
     def __init__(self, treelistwalker, icon_offset=1, **kwargs):
+        """
+        :param treewalker: tree of widgets to be displayed
+        :type treewalker: TreeWalker
+        :param indent: indentation width
+        :type indent: int
+        :param icon_offset: distance from icon to the eginning of the tree node.
+        :type icon_offset: int
+        """
         self._icon_offset = icon_offset
-        IndentedTreeListWalker.__init__(self, treelistwalker, **kwargs)
+        IndentedTreeListWalker.__init__(self, treelistwalker, indent=4, **kwargs)
         CollapseIconMixin.__init__(self, **kwargs)
         CachingMixin.__init__(self, self._construct_line, **kwargs)
 
@@ -435,8 +478,8 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
 
         return line
 
+    # needs to be overwritten as CollapseMixin doesn't empty the caches
     def set_position_collapsed(self, pos, is_collapsed):
-        """needs to be overwritten as CollapseMixin doens't empty the caches"""
         CollapseMixin.set_position_collapsed(self, pos, is_collapsed)
         if pos in self._cache:
             del(self._cache[pos])
@@ -448,10 +491,11 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
 
 class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     """
-    TreeListWalker that decorates three, indenting nodes according to their
-    depth and drawing arrows to indicate the tree structure.
+    Decorates the tree by indenting nodes according to their depth and using
+    the gaps to draw arrows indicate the tree structure.
     """
-    def __init__(self, walker, indent=12,
+    def __init__(self, walker,
+                 indent=12,
                  childbar_offset=0,
                  arrow_hbar_char=u'\u2500',
                  arrow_hbar_att=None,
@@ -463,6 +507,12 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                  arrow_connector_tchar=u'\u251c',
                  arrow_connector_lchar=u'\u2514',
                  arrow_connector_att=None, **kwargs):
+        """
+        :param walker: tree of widgets to be displayed
+        :type walker: TreeWalker
+        :param indent: indentation width
+        :type indent: int
+        """
         IndentedTreeListWalker.__init__(self, walker, indent, **kwargs)
         CachingMixin.__init__(self, self._construct_line,
                               nextpos=IndentedTreeListWalker.next_position,
@@ -609,7 +659,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
 
 
 class CollapsibleArrowTreeListWalker(CollapseIconMixin, ArrowTreeListWalker):
-    """Arrow- decorated TLW that allows collapsing subtrees"""
+    """Arrow-decoration that allows collapsing subtrees"""
     def __init__(self, treelistwalker, icon_offset=0, indent=5, **kwargs):
         self._icon_offset = icon_offset
         ArrowTreeListWalker.__init__(self, treelistwalker, indent, **kwargs)
