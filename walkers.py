@@ -4,8 +4,8 @@ class TreeWalker(object):
     over acyclic graphs that can be displayed by :class:`TreeBox` widgets.
 
     Subclasses may implement methods
-     * `next_sibbling_position`
-     * `prev_sibbling_position`
+     * `next_sibling_position`
+     * `prev_sibling_position`
      * `parent_position`
      * `first_child_position`
      * `last_child_position`
@@ -63,13 +63,13 @@ class TreeWalker(object):
         """position of last (in DFO) decendant of pos"""
         return self._last_in_direction(pos, self.last_child_position)
 
-    def last_sibbling_position(self, pos):
-        """position of last sibbling of pos"""
-        return self._last_in_direction(pos, self.next_sibbling_position)
+    def last_sibling_position(self, pos):
+        """position of last sibling of pos"""
+        return self._last_in_direction(pos, self.next_sibling_position)
 
-    def first_sibbling_position(self, pos):
-        """position of first sibbling of pos"""
-        return self._last_in_direction(pos, self.prev_sibbling_position)
+    def first_sibling_position(self, pos):
+        """position of first sibling of pos"""
+        return self._last_in_direction(pos, self.prev_sibling_position)
 
     # To be overwritten by subclasses
     def parent_position(self, pos):
@@ -87,13 +87,13 @@ class TreeWalker(object):
         or `None` if none exists."""
         return None
 
-    def next_sibbling_position(self, pos):
-        """returns the position of the next sibbling of the node at `pos`,
+    def next_sibling_position(self, pos):
+        """returns the position of the next sibling of the node at `pos`,
         or `None` if none exists."""
         return None
 
-    def prev_sibbling_position(self, pos):
-        """returns the position of the previous sibbling of the node at `pos`,
+    def prev_sibling_position(self, pos):
+        """returns the position of the previous sibling of the node at `pos`,
         or `None` if none exists."""
         return None
 
@@ -183,10 +183,10 @@ class SimpleTreeWalker(TreeWalker):
                 candidate = pos + (len(children) - 1,)
         return candidate
 
-    def next_sibbling_position(self, pos):
+    def next_sibling_position(self, pos):
         return self._confirm_pos(pos[:-1] + (pos[-1] + 1,))
 
-    def prev_sibbling_position(self, pos):
+    def prev_sibling_position(self, pos):
         return pos[:-1] + (pos[-1] - 1,) if (pos[-1] > 0) else None
 
     # optimizations

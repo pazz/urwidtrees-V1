@@ -1,7 +1,7 @@
 Urwid Tree Container API
 ========================
 
-This is a POC implementation of a new Widget Container API for the the [urwid][urwid] toolkit.
+This is a POC implementation of a new Widget Container API for the [urwid][urwid] toolkit.
 Its design goals are
 
 * clear separation classes that define, decorate and display trees of widgets
@@ -9,8 +9,8 @@ Its design goals are
 * easy to use default implementation for simple trees
 * Collapses are considered decoration
 
-We propose a `urwid.ListBox`-based widget that display trees where sibblings grow vertically and
-children horizontally.  This `TreeBox` widget handles keypresses to move in the tree and
+We propose a `urwid.ListBox`-based widget that display trees where siblings grow vertically and
+children horizontally.  This `TreeBox` widget handles key presses to move in the tree and
 collapse/expand subtrees if possible.
 
 The choice to define trees by overwriting local position movements allows to
@@ -26,8 +26,8 @@ Objects of this type define a tree structure by implementing the local movement 
     parent_position
     first_child_position
     last_child_position
-    next_sibbling_position
-    prev_sibbling_position
+    next_sibling_position
+    prev_sibling_position
 
 Each of which takes and returns a `position` object of arbitrary type (fixed for the walker)
 as done in urwids ListWalker API. Apart from this, walkers need to define a dedicated position
@@ -36,15 +36,15 @@ and define the `__getitem__` method to return some Widget for a given position.
 
 widgets.TreeBox
 ---------------
-Is essentially a urwid.ListBox that displays a given TreeWalker. Per default no decoration is used
-and the widgets ofthe tree are simply displayed line by line in depth first order.
-TreeBox's constructor accepts a `focus` parameter to specify the initially focussed position.
+Is essentially a `urwid.ListBox` that displays a given `TreeWalker`. Per default no decoration is used
+and the widgets of the tree are simply displayed line by line in depth first order.
+`TreeBox`'s constructor accepts a `focus` parameter to specify the initially focussed position.
 
 widgets.TreeListWalker
 ----------------------
 Objects of this type serve as adapter between TreeWalker and ListWalker APIs:
-They implement the ListWalker API using the data from a given TreeWalker in depth-first order.
-TreeListWalker may introduce decoration for tree nodes. This package offers a few
+They implement the ListWalker API using the data from a given `TreeWalker` in depth-first order.
+`TreeListWalker` may introduce decoration for tree nodes. This package offers a few
 readily usable `TreeListWalker` subclasses that implement decoration by indentation, arrow shapes
 and subtree collapsing.
 As such, one can directly pass on a `TreeListWalker` to an `urwid.ListBox` if one doesn't want

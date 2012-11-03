@@ -52,13 +52,13 @@ class DirectoryWalker(CachingTreeWalker):
             elements = None
         return elements
 
-    def _get_sibblings(self, pos):
+    def _get_siblings(self, pos):
         """lists the parent directory of pos """
         parent = self.parent_position(pos)
-        sibblings = [pos]
+        siblings = [pos]
         if parent is not None:
-            sibblings = self._list_dir(parent)
-        return sibblings
+            siblings = self._list_dir(parent)
+        return siblings
 
     # TreeWalker API
     def parent_position(self, pos):
@@ -83,20 +83,20 @@ class DirectoryWalker(CachingTreeWalker):
                 candidate = children[-1]
         return candidate
 
-    def next_sibbling_position(self, pos):
+    def next_sibling_position(self, pos):
         candidate = None
-        sibblings = self._get_sibblings(pos)
-        myindex = sibblings.index(pos)
-        if myindex + 1 < len(sibblings):  # pos is not the last entry
-            candidate = sibblings[myindex + 1]
+        siblings = self._get_siblings(pos)
+        myindex = siblings.index(pos)
+        if myindex + 1 < len(siblings):  # pos is not the last entry
+            candidate = siblings[myindex + 1]
         return candidate
 
-    def prev_sibbling_position(self, pos):
+    def prev_sibling_position(self, pos):
         candidate = None
-        sibblings = self._get_sibblings(pos)
-        myindex = sibblings.index(pos)
+        siblings = self._get_siblings(pos)
+        myindex = siblings.index(pos)
         if myindex > 0:  # pos is not the first entry
-            candidate = sibblings[myindex - 1]
+            candidate = siblings[myindex - 1]
         return candidate
 
 if __name__ == "__main__":

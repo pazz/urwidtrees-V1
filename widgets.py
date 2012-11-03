@@ -41,13 +41,13 @@ class TreeListWalker(urwid.ListWalker):
     # generic helper
     def _next_of_kin(self, pos):
         """
-        Looks up the next sibbling of the closest ancestor with next sibblings.
+        Looks up the next sibling of the closest ancestor with next siblings.
         This helper is used later to compute next_position in DF-order.
         """
         candidate = None
         parent = self.parent_position(pos)
         if parent is not None:
-            candidate = self.next_sibbling_position(parent)
+            candidate = self.next_sibling_position(parent)
             if candidate is None:
                 candidate = self._next_of_kin(parent)
         return candidate
@@ -59,7 +59,6 @@ class TreeListWalker(urwid.ListWalker):
         if last_child is not None:
             candidate = self._last_decendant_position(last_child)
         return candidate
-
 
     # List Walker API.
     def get_focus(self):
@@ -80,7 +79,7 @@ class TreeListWalker(urwid.ListWalker):
         if pos is not None:
             candidate = self.first_child_position(pos)
             if candidate is None:
-                candidate = self.next_sibbling_position(pos)
+                candidate = self.next_sibling_position(pos)
                 if candidate is None:
                     candidate = self._next_of_kin(pos)
         return candidate
@@ -89,7 +88,7 @@ class TreeListWalker(urwid.ListWalker):
         """returns the previous position in depth-first order"""
         candidate = None
         if pos is not None:
-            prevsib = self.prev_sibbling_position(pos)  # is None if first
+            prevsib = self.prev_sibling_position(pos)  # is None if first
             if prevsib is not None:
                 candidate = self._last_decendant_position(prevsib)
             else:
@@ -104,11 +103,11 @@ class TreeListWalker(urwid.ListWalker):
     # the treewalker we work on. `next/prev_position` use the TreeWalker
     # methods proxied by self and thus decorative tree operations such as
     # collapses are done completely in the TreeListWalker.
-    def prev_sibbling_position(self, pos):
-        return self._walker.prev_sibbling_position(pos)
+    def prev_sibling_position(self, pos):
+        return self._walker.prev_sibling_position(pos)
 
-    def next_sibbling_position(self, pos):
-        return self._walker.next_sibbling_position(pos)
+    def next_sibling_position(self, pos):
+        return self._walker.next_sibling_position(pos)
 
     def parent_position(self, pos):
         return self._walker.parent_position(pos)
@@ -128,7 +127,7 @@ class TreeBox(WidgetWrap):
     directions in the Tree.
 
     TreeBox interprets `left/right` as well as page `up/down` to move the focus
-    to parent/first child and next/previous sibbling respectively. All other
+    to parent/first child and next/previous sibling respectively. All other
     keys are passed to the underlying ListBox.
     """
     _selectable = True
@@ -158,9 +157,9 @@ class TreeBox(WidgetWrap):
             elif key == 'right':
                 self.focus_first_child()
             elif key == '[':
-                self.focus_prev_sibbling()
+                self.focus_prev_sibling()
             elif key == ']':
-                self.focus_next_sibbling()
+                self.focus_next_sibling()
             if isinstance(self._walker, CollapseMixin):
                 if key == '-':
                     w, focuspos = self._walker.get_focus()
@@ -188,23 +187,23 @@ class TreeBox(WidgetWrap):
         if child is not None:
             self._outer_list.set_focus(child)
 
-    def focus_next_sibbling(self):
+    def focus_next_sibling(self):
         w, focuspos = self._walker.get_focus()
-        sib = self._walker.next_sibbling_position(focuspos)
+        sib = self._walker.next_sibling_position(focuspos)
         if sib is not None:
             self._outer_list.set_focus(sib)
 
-    def focus_prev_sibbling(self):
+    def focus_prev_sibling(self):
         w, focuspos = self._walker.get_focus()
-        sib = self._walker.prev_sibbling_position(focuspos)
+        sib = self._walker.prev_sibling_position(focuspos)
         if sib is not None:
             self._outer_list.set_focus(sib)
-
 
 
 NO_SPACE_MSG = 'too little space for requested decoration'
 
 # Mixins for TreeListWalkers
+
 
 class CachingMixin(object):
     """Mixin that allows TreeListWalkers to cache constructed line-widgets"""
@@ -384,6 +383,7 @@ class CollapseIconMixin(CollapseMixin):
 # Next we implement some Tree decorations by subclassing TreeListWalker using
 # various Mixins..
 
+
 class CollapsibleTreeListWalker(CollapseMixin, TreeListWalker):
     """Undecorated TreeListWalker that allows to collapse subtrees"""
     def __init__(self, treelistwalker, **kwargs):
@@ -410,7 +410,7 @@ class IndentedTreeListWalker(TreeListWalker):
         """
         builds a list element for given position in the tree.
         It consists of the original widget taken from the TreeWalker and some
-        decoration columns depending on the existence of parent and sibbling
+        decoration columns depending on the existence of parent and sibling
         positions. The result is a urwid.Culumns widget.
         """
         line = None
@@ -438,7 +438,8 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         :type icon_offset: int
         """
         self._icon_offset = icon_offset
-        IndentedTreeListWalker.__init__(self, treelistwalker, indent=indent, **kwargs)
+        IndentedTreeListWalker.__init__(
+            self, treelistwalker, indent=indent, **kwargs)
         CollapseIconMixin.__init__(self, **kwargs)
         CachingMixin.__init__(self, self._construct_line, **kwargs)
 
@@ -446,7 +447,7 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         """
         builds a list element for given position in the tree.
         It consists of the original widget taken from the TreeWalker and some
-        decoration columns depending on the existence of parent and sibbling
+        decoration columns depending on the existence of parent and sibling
         positions. The result is a urwid.Culumns widget.
         """
         void = SolidFill(' ')
@@ -473,7 +474,8 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
             if self._walker.first_child_position(pos) is not None:
                 if icon is not None:
                     # space to the left
-                    cols.append((available_space - firstindent_width, SolidFill(' ')))
+                    cols.append(
+                        (available_space - firstindent_width, SolidFill(' ')))
                     # icon
                     icon_pile = urwid.Pile([('pack', icon), void])
                     cols.append((iwidth, icon_pile))
@@ -551,7 +553,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
         if parent is not None:
             grandparent = self._walker.parent_position(parent)
             if self._indent > 0 and grandparent is not None:
-                parent_sib = self._walker.next_sibbling_position(parent)
+                parent_sib = self._walker.next_sibling_position(parent)
                 draw_vbar = parent_sib is not None and self._arrow_vbar_char is not None
                 space_width = self._indent - 1 * (
                     draw_vbar) - self._childbar_offset
@@ -570,13 +572,13 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     def _construct_connector(self, pos):
         """
         build widget to be used as "connector" bit between the vertical bar
-        between sibblings and their respective horizontab bars leading to the
+        between siblings and their respective horizontab bars leading to the
         arrow tip
         """
         # connector symbol, either L or |- shaped.
         connectorw = None
         connector = None
-        if self._walker.next_sibbling_position(pos) is not None:  # |- shaped
+        if self._walker.next_sibling_position(pos) is not None:  # |- shaped
             if self._arrow_connector_tchar is not None:
                 connectorw = Text(self._arrow_connector_tchar)
         else:  # L shaped
@@ -600,7 +602,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     def _construct_first_indent(self, pos):
         """
         build spacer to occupy the first indentation level from pos to the
-        left. This is separate as it adds arrowtip and sibbling connector.
+        left. This is separate as it adds arrowtip and sibling connector.
         """
         cols = []
         void = AttrMap(urwid.SolidFill(' '), self._arrow_att)
@@ -614,7 +616,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                 if width > available_width:
                     raise TreeDecorationError(NO_SPACE_MSG)
                 available_width -= width
-                if self._walker.next_sibbling_position(pos) is not None:
+                if self._walker.next_sibling_position(pos) is not None:
                     barw = urwid.SolidFill(self._arrow_vbar_char)
                     below = AttrMap(barw, self._arrow_vbar_att or
                                     self._arrow_att)
@@ -629,7 +631,8 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
             awidth, at = self._construct_arrow_tip(pos)
             if at is not None:
                 if awidth > available_width:
-                    logging.debug('awidth=%d available_width=%d' % (awidth,available_width))
+                    logging.debug('awidth=%d available_width=%d' %
+                                  (awidth, available_width))
                     raise TreeDecorationError(NO_SPACE_MSG)
                 available_width -= awidth
                 at_spacer = urwid.Pile([('pack', at), void])
@@ -647,7 +650,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
         """
         builds a list element for given position in the tree.
         It consists of the original widget taken from the TreeWalker and some
-        decoration columns depending on the existence of parent and sibbling
+        decoration columns depending on the existence of parent and sibling
         positions. The result is a urwid.Culumns widget.
         """
         line = None
