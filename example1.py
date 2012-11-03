@@ -37,18 +37,21 @@ def construct_example_tree(selectable_nodes=True):
             return key
 
     # define root node
-    tree = (FocusableText('ROOT (0,)'), [])
+    tree = (FocusableText('ROOT'), [])
 
     # define some children
-    for i in range(2):
-        subtree = (FocusableText('NODE(0,%d)' % i), [])
+    c = g = gg = 0  # counter
+    for i in range(4):
+        subtree = (FocusableText('Child %d' % c), [])
         # and grandchildren..
-        for j in range(1):
-            subsubtree = (FocusableText('NODE (0.%d.%d)' % (i, j)), [])
+        for j in range(2):
+            subsubtree = (FocusableText('Grandchild %d' % g), [])
             for k in range(3):
-                leaf = (FocusableText('LEAF (0.%d.%d.%d)' % (i, j, k)), None)
+                leaf = (FocusableText('Grand Grandchild %d' % gg), None)
                 subsubtree[1].append(leaf)
+                gg += 1  # inc grand-grandchild counter
             subtree[1].append(subsubtree)
+            g += 1  # inc grandchild counter
         tree[1].append(subtree)
     return tree
 
