@@ -52,6 +52,7 @@ def construct_example_tree(selectable_nodes=True):
             subtree[1].append(subsubtree)
             g += 1  # inc grandchild counter
         tree[1].append(subtree)
+        c += 1
     return tree
 
 # define a list of trees to be passed on to SimpleTreeWalker

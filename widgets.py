@@ -150,7 +150,7 @@ class TreeBox(WidgetWrap):
 
     def keypress(self, size, key):
         key = self._outer_list.keypress(size, key)
-        if key in ['left', 'right', '[', ']', '-', '+']:
+        if key in ['left', 'right', '[', ']', '-', '+', 'C', 'E']:
             if key == 'left':
                 self.focus_parent()
             elif key == 'right':
@@ -166,6 +166,10 @@ class TreeBox(WidgetWrap):
                 elif key == '+':
                     w, focuspos = self._walker.get_focus()
                     self._walker.expand(focuspos)
+                elif key == 'C':
+                    self._walker.collapse_all()
+                elif key == 'E':
+                    self._walker.expand_all()
             # This is a hack around ListBox misbehaving:
             # it seems impossible to set the focus without calling keypress as
             # otherwise the change becomes visible only after the next render()
@@ -298,8 +302,34 @@ class CollapseMixin(object):
     def collapse(self, pos):
         self.set_position_collapsed(pos, True)
 
+    def collapse_all(self):
+        self.set_collapsed_all(True)
+
+    def expand_all(self):
+        self.set_collapsed_all(False)
+
+    def set_collapsed_all(self, is_collapsed):
+        self._initially_collapsed = lambda x: is_collapsed
+        self._divergent_positions = []
+        newfocus = self._walker.first_ancestor(self._focus)
+        self.set_focus(newfocus)
+        signals.emit_signal(self, "modified")
+
     def expand(self, pos):
         self.set_position_collapsed(pos, False)
+
+    def clear_from_caches(self, pos):
+        if pos in self._cache:
+            del(self._cache[pos])
+        if pos in self._next_cache:
+            del(self._next_cache[pos])
+        if pos in self._prev_cache:
+            del(self._prev_cache[pos])
+
+    def clear_caches(self):
+        self._cache = {}
+        self._next_cache = {}
+        self._prev_cache = {}
 
 
 class CollapseIconMixin(CollapseMixin):
@@ -491,14 +521,13 @@ class CollapsibleIndentedTreeListWalker(CollapseIconMixin, CachingMixin, Indente
         return line
 
     # needs to be overwritten as CollapseMixin doesn't empty the caches
+    def set_collapsed_all(self, is_collapsed):
+        CollapseMixin.clear_caches(self)
+        CollapseMixin.set_collapsed_all(self, is_collapsed)
+
     def set_position_collapsed(self, pos, is_collapsed):
+        CollapseMixin.clear_caches(self)
         CollapseMixin.set_position_collapsed(self, pos, is_collapsed)
-        if pos in self._cache:
-            del(self._cache[pos])
-        if pos in self._next_cache:
-            del(self._next_cache[pos])
-        if pos in self._prev_cache:
-            del(self._prev_cache[pos])
 
 
 class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
@@ -701,12 +730,11 @@ class CollapsibleArrowTreeListWalker(CollapseIconMixin, ArrowTreeListWalker):
 
         return overall_width, Columns(cols)
 
+    # needs to be overwritten as CollapseMixin doesn't empty the caches
+    def set_collapsed_all(self, is_collapsed):
+        CollapseMixin.clear_caches(self)
+        CollapseMixin.set_collapsed_all(self, is_collapsed)
+
     def set_position_collapsed(self, pos, is_collapsed):
-        """needs to be overwritten as CollapseMixin doens't empty the caches"""
+        CollapseMixin.clear_caches(self)
         CollapseMixin.set_position_collapsed(self, pos, is_collapsed)
-        if pos in self._cache:
-            del(self._cache[pos])
-        if pos in self._next_cache:
-            del(self._next_cache[pos])
-        if pos in self._prev_cache:
-            del(self._prev_cache[pos])
