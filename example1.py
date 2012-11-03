@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import logging
 import urwid
 from walkers import SimpleTreeWalker
 from widgets import TreeBox
@@ -62,7 +61,6 @@ forrest = [construct_example_tree()]
 swalker = SimpleTreeWalker(forrest)
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='example.log', level=logging.DEBUG)
     # put the walker into a treebox
     treebox = TreeBox(swalker)
 

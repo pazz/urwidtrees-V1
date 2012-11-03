@@ -1,7 +1,6 @@
 import urwid
 from urwid import AttrMap, Text, WidgetWrap, ListBox, Columns, SolidFill
 from urwid import signals
-import logging
 
 
 class TreeDecorationError(Exception):
@@ -609,7 +608,6 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
         available_width = self._indent
 
         if self._walker.depth(pos) > 0:
-            logging.debug('available_width=%d' % (available_width))
             connector = self._construct_connector(pos)
             if connector is not None:
                 width = connector.pack()[0]
@@ -626,13 +624,10 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                 spacer = urwid.Pile([('pack', connector), below])
                 cols.append((width, spacer))
 
-            logging.debug('available_width=%d' % (available_width))
             #arrow tip
             awidth, at = self._construct_arrow_tip(pos)
             if at is not None:
                 if awidth > available_width:
-                    logging.debug('awidth=%d available_width=%d' %
-                                  (awidth, available_width))
                     raise TreeDecorationError(NO_SPACE_MSG)
                 available_width -= awidth
                 at_spacer = urwid.Pile([('pack', at), void])
