@@ -171,6 +171,8 @@ class TreeBox(WidgetWrap):
             # it seems impossible to set the focus without calling keypress as
             # otherwise the change becomes visible only after the next render()
             return self._outer_list.keypress(size, None)
+        else:
+            return self._outer_list.keypress(size, key)
 
 
 NO_SPACE_MSG = 'too little space for requested decoration'
@@ -449,7 +451,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
     TreeListWalker that decorates three, indenting nodes according to their
     depth and drawing arrows to indicate the tree structure.
     """
-    def __init__(self, walker, indent=3,
+    def __init__(self, walker, indent=12,
                  childbar_offset=0,
                  arrow_hbar_char=u'\u2500',
                  arrow_hbar_att=None,
@@ -544,6 +546,7 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
         available_width = self._indent
 
         if self._walker.depth(pos) > 0:
+            logging.debug('available_width=%d' % (available_width))
             connector = self._construct_connector(pos)
             if connector is not None:
                 width = connector.pack()[0]
@@ -560,10 +563,12 @@ class ArrowTreeListWalker(CachingMixin, IndentedTreeListWalker):
                 spacer = urwid.Pile([('pack', connector), below])
                 cols.append((width, spacer))
 
+            logging.debug('available_width=%d' % (available_width))
             #arrow tip
             awidth, at = self._construct_arrow_tip(pos)
             if at is not None:
                 if awidth > available_width:
+                    logging.debug('awidth=%d available_width=%d' % (awidth,available_width))
                     raise TreeDecorationError(NO_SPACE_MSG)
                 available_width -= awidth
                 at_spacer = urwid.Pile([('pack', at), void])
