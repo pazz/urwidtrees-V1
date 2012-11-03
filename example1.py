@@ -19,6 +19,8 @@ palette = [
 # SimpleTreeWalker. Essentially, a tree is given as
 # (nodewidget, [list, of, subtrees]). SimpleTreeWalker
 # accepts lists of such trees.
+
+
 def construct_example_tree(selectable_nodes=True):
 
     class FocusableText(urwid.WidgetWrap):
@@ -38,10 +40,10 @@ def construct_example_tree(selectable_nodes=True):
     tree = (FocusableText('ROOT (0,)'), [])
 
     # define some children
-    for i in range(5):
+    for i in range(2):
         subtree = (FocusableText('NODE(0,%d)' % i), [])
         # and grandchildren..
-        for j in range(2):
+        for j in range(1):
             subsubtree = (FocusableText('NODE (0.%d.%d)' % (i, j)), [])
             for k in range(3):
                 leaf = (FocusableText('LEAF (0.%d.%d.%d)' % (i, j, k)), None)
@@ -62,5 +64,5 @@ if __name__ == "__main__":
     treebox = TreeBox(swalker)
 
     # add some decoration
-    rootwidget = urwid.AttrMap(treebox,'body')
+    rootwidget = urwid.AttrMap(treebox, 'body')
     urwid.MainLoop(rootwidget, palette).run()  # go

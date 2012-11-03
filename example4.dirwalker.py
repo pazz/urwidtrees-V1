@@ -2,14 +2,14 @@
 
 import urwid
 import os
-from walkers import LazyTreeWalker
+from example1 import palette  # example data
 from widgets import TreeBox
-from widgets import IndentedTreeListWalker
+from walkers import CachingTreeWalker
 from widgets import CollapsibleArrowTreeListWalker
-import logging
 
 
 class FocusableText(urwid.WidgetWrap):
+    """Widget to display paths lines"""
     def __init__(self, txt):
         t = urwid.Text(txt)
         w = urwid.AttrMap(t, 'body', 'focus')
@@ -22,16 +22,26 @@ class FocusableText(urwid.WidgetWrap):
         return key
 
 
-class DirectoryWalker(LazyTreeWalker):
-    root = '/'
+class DirectoryWalker(CachingTreeWalker):
+    """
+    A custom TreeWalker representing our filesystem structure.
+    We subclass CachingTreeWalker instead of TreeWalker to cache constructed lines..
+    """
+    # determine dir separator and form of root node
+    pathsep = os.path.sep
+    drive, _ = os.path.splitdrive(pathsep)
+
+    # define root node This is part of the TreeWalker API!
+    root = drive + pathsep
+
+    # initialize and tell Caching superclass how to construct new lines
     def __init__(self):
-        self.dirsep = getattr(os.path, 'sep', '/')  # separator for this os
-        LazyTreeWalker.__init__(self, self.load_widget)
+        CachingTreeWalker.__init__(self, self.load_widget)
 
     def load_widget(self, pos):
-        logging.debug("loading widget at: %s" % pos)
         return FocusableText(pos)
 
+    # generic helper
     def _list_dir(self, path):
         """returns absolute paths for all entries in a directory"""
         try:
@@ -50,6 +60,7 @@ class DirectoryWalker(LazyTreeWalker):
             sibblings = self._list_dir(parent)
         return sibblings
 
+    # TreeWalker API
     def parent_position(self, pos):
         parent = None
         if pos != '/':
@@ -88,24 +99,27 @@ class DirectoryWalker(LazyTreeWalker):
             candidate = sibblings[myindex - 1]
         return candidate
 
-
-# define some nice colours
-palette = [
-    ('body', 'black', 'light gray'),
-    ('focus', 'light gray', 'dark blue', 'standout'),
-]
-
-
 if __name__ == "__main__":
-    logging.basicConfig(filename='example.log', level=logging.DEBUG)
     cwd = os.getcwd()  # get current working directory
-    D = DirectoryWalker()  # get a Walker with cwd as initial focus
-    A = CollapsibleArrowTreeListWalker(D, focus=cwd,
-                                       is_collapsed=lambda pos: len(pos) > 2, arrow_tip_char=None,
-                                       icon_frame_left_char=None,
-                                       icon_frame_right_char=None,
-                                       icon_collapsed_char=u'\u25B6',
-                                       icon_expanded_char=u'\u25B7')
-    treebox = TreeBox(A)  # stick it into a TreeBox
-    treebox = urwid.AttrMap(treebox, 'body')  # use body attribute for gaps
+    walker = DirectoryWalker()  # get a directory walker
+
+    # define initial collapse
+    as_deep_as_cwd = lambda pos: walker.depth(pos) >= walker.depth(cwd)
+
+    # add arrow decoration.
+    # We hide the usual arrow tip and icon frame and use a custom arrow tip to
+    # indicate the collapse status.  Collapse icons are kept non-selectable, so
+    # use the key bindings +/- to collapse subtrees.
+    dwalker = CollapsibleArrowTreeListWalker(walker,
+                                             focus=cwd,
+                                             # set cwd as initial focus
+                                             is_collapsed=as_deep_as_cwd,
+                                             arrow_tip_char=None,
+                                             icon_frame_left_char=None,
+                                             icon_frame_right_char=None,
+                                             icon_collapsed_char=u'\u25B6',
+                                             icon_expanded_char=u'\u25B7')
+
+    # stick it into a TreeBox and use 'body' color attribute for gaps
+    treebox = urwid.AttrMap(TreeBox(dwalker), 'body')
     urwid.MainLoop(treebox, palette).run()  # go
