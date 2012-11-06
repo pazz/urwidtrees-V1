@@ -98,6 +98,17 @@ class TreeListWalker(urwid.ListWalker):
                 if parent is not None:
                     candidate = parent
         return candidate
+
+    def positions(self, reverse=False):
+        pos = self._walker.root
+        nextpos = self.next_position
+        if reverse:
+            lastroot = self._walker.last_sibling_position(self._walker.root)
+            pos = self._walker.last_decendant(lastroot)
+            nextpos = self.prev_position
+        while pos is not None:
+            yield pos
+            pos = nextpos(pos)
     # end of List Walker API
 
     # Tree Walker API.
