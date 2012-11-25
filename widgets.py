@@ -206,6 +206,13 @@ class TreeBox(WidgetWrap):
         if child is not None:
             self._outer_list.set_focus(child)
 
+    def focus_last_child(self):
+        w, focuspos = self._walker.get_focus()
+        child = self._walker.last_child_position(focuspos)
+        logging.debug('last child of %s is %s' % (focuspos,child))
+        if child is not None:
+            self._outer_list.set_focus(child)
+
     def focus_next_sibling(self):
         w, focuspos = self._walker.get_focus()
         sib = self._walker.next_sibling_position(focuspos)
