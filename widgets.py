@@ -26,6 +26,7 @@ class TreeListWalker(urwid.ListWalker):
         """
         self._walker = treewalker
         self._focus = focus or treewalker.root
+        self.root = treewalker.root
 
     def __getitem__(self, pos):
         return self._walker[pos]
