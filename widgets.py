@@ -135,6 +135,9 @@ class TreeListWalker(urwid.ListWalker):
         return self._walker.last_child_position(pos)
     # end of Tree Walker API
 
+    def depth(self, pos):
+        return self._walker.depth(pos)
+
 
 class TreeBox(WidgetWrap):
     """

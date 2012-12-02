@@ -25,6 +25,6 @@ if __name__ == "__main__":
     nwalker = NestedTreeWalker(SimpleTreeWalker([tree]))
     #nwalker = SimpleTreeWalker([tree])
     # put the walker into a treebox
-    treebox = TreeBox(nwalker)
+    treebox = TreeBox(outerwalker)
     rootwidget = urwid.AttrMap(treebox, 'body')
     urwid.MainLoop(rootwidget, palette).run()  # go

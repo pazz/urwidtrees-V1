@@ -1,9 +1,9 @@
 # Copyright (C) 2012  Patrick Totzke <patricktotzke@gmail.com>
 # This file is released under the GNU GPL, version 3 or a later revision.
 
-import logging
 from widgets import TreeListWalker, TreeBox
 from urwid import ListBox
+import logging
 
 
 class TreeWalker(object):
@@ -125,21 +125,35 @@ class NestedTreeWalker(TreeWalker):
     def __init__(self, tree_walker):
         self.tree_walker = tree_walker
 
-    #def depth(self, pos):
-    #    return self.tree_walker.depth(pos[0])
+    def depth(self, pos, outmost=True):
+        depth = self.tree_walker.depth(pos[0])
+        if not outmost:
+            entry = self.tree_walker[pos[0]]
+            if isinstance(entry, TreeBox) and len(pos) == 2:
+                depth += entry._walker.depth(pos[1])
+        return depth
 
     def _expand_pos(self, pos):
         primary_content = self.tree_walker[pos[0]]
         completepos = pos
-        if len(pos) == 1 and isinstance(primary_content, TreeListWalker):
-            completepos = pos[0], primary_content.root
+        #if len(pos) == 1 and isinstance(primary_content, TreeBox):
+        #    completepos = pos[0], primary_content._walker.root
         return completepos
 
     def __getitem__(self, pos):
-        primary = self.tree_walker[pos[0]]
-        if len(pos) == 1:
-            return primary
-        return primary[pos[1]]
+        entry = self.tree_walker[pos[0]]
+        if isinstance(entry, ListBox):
+            walker = entry.body
+            if len(pos) == 2:
+                entry = walker[pos[1]]
+            entry = next(listwalker.positions)
+        if isinstance(entry, TreeBox):
+            walker = entry._walker
+            if len(pos) == 2:
+                entry = walker[pos[1]]
+            else:
+                entry = walker[walker.root]
+        return entry
 
     def parent_position(self, pos):
         """returns the position of the parent node of the node at `pos`
@@ -148,7 +162,7 @@ class NestedTreeWalker(TreeWalker):
             primary_pos, secondary_pos = pos
             primary = self.tree_walker[primary_pos]
             if isinstance(primary, TreeBox):
-                subwalker = primary.walker
+                subwalker = primary._walker
                 secondary_parent = subwalker.parent_position(secondary_pos)
                 if secondary_parent is not None:
                     return primary_pos, secondary_parent
@@ -162,38 +176,51 @@ class NestedTreeWalker(TreeWalker):
     def first_child_position(self, pos):
         """returns the position of the first child of the node at `pos`,
         or `None` if none exists."""
-        if len(pos) == 2:
-            primary_pos, secondary_pos = pos
-            primary = self.tree_walker[primary_pos]
-            if isinstance(primary, TreeBox):
-                subwalker = primary.walker
-                secondary_child = subwalker.first_child_position(secondary_pos)
-                if secondary_child is not None:
-                    return primary_pos, secondary_child
-            elif isinstance(primary, ListBox):
-                return None
-        primary_child = self.tree_walker.first_child_position(pos[0])
-        if primary_child is None:
-            return None
-        return self._expand_pos((primary_child, ))
+
+        childpos = None
+        primary_pos = pos[0]
+        primary = self.tree_walker[primary_pos]
+        if isinstance(primary, TreeBox):
+            subwalker = primary._walker
+            if len(pos) == 1:
+                secondary_pos = subwalker.root
+            else:
+                secondary_pos = pos[1]
+            secondary_child = subwalker.first_child_position(secondary_pos)
+            if secondary_child is not None:
+                childpos = primary_pos, secondary_child
+        elif isinstance(primary, ListBox):
+            childpos = None
+        else:
+            primary_child = self.tree_walker.first_child_position(pos[0])
+            if primary_child is not None:
+                childpos = (primary_child, )
+        logging.debug("first child of %s is %s" % (pos, childpos))
+        return childpos
 
     def last_child_position(self, pos):
         """returns the position of the last child of the node at `pos`,
         or `None` if none exists."""
-        if len(pos) == 2:
-            primary_pos, secondary_pos = pos
-            primary = self.tree_walker[primary_pos]
-            if isinstance(primary, TreeBox):
-                subwalker = primary.walker
-                secondary_child = subwalker.last_child_position(secondary_pos)
-                if secondary_child is not None:
-                    return primary_pos, secondary_child
-            elif isinstance(primary, ListBox):
-                return None
-        primary_child = self.tree_walker.last_child_position(pos[0])
-        if primary_child is None:
-            return None
-        return self._expand_pos((primary_child, ))
+        childpos = None
+        primary_pos = pos[0]
+        primary = self.tree_walker[primary_pos]
+        if isinstance(primary, TreeBox):
+            subwalker = primary._walker
+            if len(pos) == 1:
+                secondary_pos = subwalker.root
+            else:
+                secondary_pos = pos[1]
+            secondary_child = subwalker.last_child_position(secondary_pos)
+            if secondary_child is not None:
+                childpos = primary_pos, secondary_child
+        elif isinstance(primary, ListBox):
+            childpos = None
+        else:
+            primary_child = self.tree_walker.last_child_position(pos[0])
+            if primary_child is not None:
+                childpos = (primary_child, )
+        logging.debug("last child of %s is %s" % (pos, childpos))
+        return childpos
 
     def next_sibling_position(self, pos):
         """returns the position of the next sibling of the node at `pos`,
@@ -202,7 +229,7 @@ class NestedTreeWalker(TreeWalker):
             primary_pos, secondary_pos = pos
             primary = self.tree_walker[primary_pos]
             if isinstance(primary, TreeBox):
-                subwalker = primary.walker
+                subwalker = primary._walker
                 secondary_next = subwalker.next_sibling_position(secondary_pos)
                 if secondary_next is None:
                     return None
@@ -216,8 +243,7 @@ class NestedTreeWalker(TreeWalker):
         if primary_next is None:
             nextp = None
         else:
-            nextp = self._expand_pos((primary_next,))
-        logging.debug('nexts of %s is %s' % (str(pos), str(nextp)))
+            nextp = (primary_next, )
         return nextp
 
     def prev_sibling_position(self, pos):
@@ -227,7 +253,7 @@ class NestedTreeWalker(TreeWalker):
             primary_pos, secondary_pos = pos
             primary = self.tree_walker[primary_pos]
             if isinstance(primary, TreeBox):
-                subwalker = primary.walker
+                subwalker = primary._walker
                 if subwalker.root != pos[1]:
                     secondary_prev = subwalker.prev_sibling_position(secondary_pos)
                     if secondary_prev is None:
@@ -243,8 +269,7 @@ class NestedTreeWalker(TreeWalker):
         if primary_prev is None:
             prevp = None
         else:
-            prevp = self._expand_pos((primary_prev,))
-        logging.debug('prev sibling of %s is %s' % (str(pos), str(prevp)))
+            prevp = (primary_prev, )
         return prevp
 
 
